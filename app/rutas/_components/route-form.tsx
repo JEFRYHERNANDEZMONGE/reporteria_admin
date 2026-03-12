@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 import type { RouteFormState } from "@/app/rutas/actions";
+import { SearchableCombobox } from "@/app/_components/searchable-combobox";
 
 type RouteRecord = {
   route_id: number;
@@ -49,7 +50,6 @@ export function RouteForm({
   action,
 }: RouteFormProps) {
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
-  const [searchValue, setSearchValue] = useState("");
   const [selectedEstablishments, setSelectedEstablishments] = useState<
     EstablishmentOption[]
   >(initialAssignedEstablishments);
@@ -79,18 +79,8 @@ export function RouteForm({
       (item) => !selectedIds.has(item.establishment_id),
     );
 
-    const query = searchValue.trim().toLowerCase();
-    if (!query) return filtered.slice(0, 8);
-
-    return filtered
-      .filter((item) => {
-        const name = item.name.toLowerCase();
-        const direction = (item.direction ?? "").toLowerCase();
-        return name.includes(query) || direction.includes(query);
-      })
-      .slice(0, 8);
-  }, [establishmentPool, searchValue, selectedEstablishments]);
-  const shouldShowAvailableList = searchValue.trim().length > 0;
+    return filtered;
+  }, [establishmentPool, selectedEstablishments]);
 
   const addEstablishment = (establishment: EstablishmentOption) => {
     setSelectedEstablishments((prev) => {
@@ -105,7 +95,6 @@ export function RouteForm({
       return [...prev, establishment];
     });
 
-    setSearchValue("");
   };
 
   const removeEstablishment = (establishmentId: number) => {
@@ -218,53 +207,17 @@ export function RouteForm({
             </span>
 
             <div className="rounded-[8px] border border-[var(--border)] bg-white p-2">
-              <div className="flex h-9 items-center gap-2 rounded-[8px] border border-[var(--border)] px-2">
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4 shrink-0 text-[#405C62]"
-                >
-                  <path
-                    d="M11 4a7 7 0 105.29 11.59l3.56 3.56a1 1 0 001.41-1.41l-3.56-3.56A7 7 0 0011 4zm0 2a5 5 0 110 10 5 5 0 010-10z"
-                    fill="currentColor"
-                  />
-                </svg>
-
-                <input
-                  value={searchValue}
-                  onChange={(event) => setSearchValue(event.target.value)}
-                  placeholder="Buscar por nombre"
-                  className="h-full w-full bg-transparent text-[13px] text-[#5A7984] outline-none placeholder:text-[#8A9BA7]"
-                />
-              </div>
+              <SearchableCombobox
+                items={availableToAdd}
+                getItemId={(establishment) => establishment.establishment_id}
+                getItemLabel={(establishment) => establishment.name}
+                getItemKeywords={(establishment) => establishment.direction ?? ""}
+                placeholder="Buscar por nombre"
+                emptyMessage="Sin resultados disponibles"
+                onSelect={addEstablishment}
+              />
             </div>
           </label>
-
-          {shouldShowAvailableList ? (
-            <div className="mt-2 max-w-[360px] rounded-[8px] border border-[var(--border)] bg-white">
-              {availableToAdd.length > 0 ? (
-                <div className="max-h-[180px] overflow-y-auto rounded-[8px]">
-                  {availableToAdd.map((establishment) => (
-                    <button
-                      key={establishment.establishment_id}
-                      type="button"
-                      onClick={() => addEstablishment(establishment)}
-                      className="flex w-full items-center justify-between border-b border-[var(--border)] px-3 py-2 text-left last:border-b-0 hover:bg-[#F5F7F5]"
-                    >
-                      <span className="text-[13px] text-[#5A7984]">
-                        {establishment.name}
-                      </span>
-                      <span className="text-[11px] text-[var(--muted)]">Agregar</span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="px-3 py-2 text-[12px] text-[#8A9BA7]">
-                  Sin resultados disponibles
-                </p>
-              )}
-            </div>
-          ) : null}
         </div>
 
         <div className="p-3">
