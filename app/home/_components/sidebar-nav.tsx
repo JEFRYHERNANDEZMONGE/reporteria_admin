@@ -39,12 +39,6 @@ export function SidebarNav({ role }: { role: AppRole }) {
   const navItems: NavItem[] = [
     { label: "Dashboard", href: roleHomePath(role), section: "principal", enabled: true },
     { label: "Rutas", href: "/rutas", section: "operacion", enabled: canAccessRoutes },
-    {
-      label: "Resumen rutas",
-      href: "/rutas/resumen",
-      section: "operacion",
-      enabled: canAccessRoutes,
-    },
     { label: "Tareas", href: "/tareas", section: "operacion", enabled: canAccessTasks },
     {
       label: "Establecimientos",
