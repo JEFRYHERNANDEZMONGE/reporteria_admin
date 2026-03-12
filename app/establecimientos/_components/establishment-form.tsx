@@ -10,6 +10,9 @@ type EstablishmentRecord = {
   name: string;
   route_id: number | null;
   direction: string | null;
+  province: string | null;
+  canton: string | null;
+  district: string | null;
   lat: number | string | null;
   lng: number | string | null;
   is_active: boolean;
@@ -158,10 +161,52 @@ export function EstablishmentForm({
             <input
               name="direction"
               defaultValue={establishment?.direction ?? ""}
-              placeholder="Direccion"
+              placeholder="Direccion detallada"
+              required
               className="h-10 w-full rounded-[8px] border border-[var(--border)] px-3 text-[13px] outline-none focus:border-foreground"
             />
           </label>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
+                Provincia
+              </span>
+              <input
+                name="province"
+                defaultValue={establishment?.province ?? ""}
+                placeholder="Provincia"
+                required
+                className="h-10 w-full rounded-[8px] border border-[var(--border)] px-3 text-[13px] outline-none focus:border-foreground"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
+                Canton
+              </span>
+              <input
+                name="canton"
+                defaultValue={establishment?.canton ?? ""}
+                placeholder="Canton"
+                required
+                className="h-10 w-full rounded-[8px] border border-[var(--border)] px-3 text-[13px] outline-none focus:border-foreground"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
+                Distrito
+              </span>
+              <input
+                name="district"
+                defaultValue={establishment?.district ?? ""}
+                placeholder="Distrito"
+                required
+                className="h-10 w-full rounded-[8px] border border-[var(--border)] px-3 text-[13px] outline-none focus:border-foreground"
+              />
+            </label>
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="block">

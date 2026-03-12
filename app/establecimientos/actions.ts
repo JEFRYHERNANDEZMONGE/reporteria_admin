@@ -1,7 +1,9 @@
 ﻿"use server";
 
+import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { parseEstablishmentImportRow } from "@/lib/establishments/import-template";
 import { getUserRoleFromProfile } from "@/lib/auth/profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -14,9 +16,27 @@ export type DeleteEstablishmentState = {
   success: boolean;
 };
 
+export type EstablishmentImportState = {
+  error: string | null;
+  success: string | null;
+  details: string[];
+};
+
 type AuthorizedEstablishmentContext =
   | { supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>; role: "admin" | "editor" }
   | { error: string };
+
+type ImportedEstablishmentRow = {
+  routeName: string;
+  name: string;
+  direction: string;
+  province: string;
+  canton: string;
+  district: string;
+  lat: number | null;
+  long: number | null;
+  is_active: boolean;
+};
 
 function parseIsActive(value: FormDataEntryValue | null) {
   return String(value ?? "active") === "active";
@@ -158,6 +178,323 @@ async function syncEstablishmentProducts(
   return { error: null as string | null };
 }
 
+const IMPORT_ERROR_LIMIT = 12;
+const TEMPLATE_HEADER_LABELS = [
+  "ruta",
+  "nombre",
+  "direccion",
+  "provincia",
+  "canton",
+  "distrito",
+  "coordenadas",
+  "estado",
+] as const;
+
+function validateRequiredLocationFields(input: {
+  direction: string;
+  province: string;
+  canton: string;
+  district: string;
+}) {
+  if (!input.direction) {
+    return "La direccion detallada es obligatoria.";
+  }
+
+  if (!input.province) {
+    return "La provincia es obligatoria.";
+  }
+
+  if (!input.canton) {
+    return "El canton es obligatorio.";
+  }
+
+  if (!input.district) {
+    return "El distrito es obligatorio.";
+  }
+
+  return null;
+}
+
+function summarizeImportErrors(errors: string[]) {
+  if (errors.length <= IMPORT_ERROR_LIMIT) return errors;
+  const omitted = errors.length - IMPORT_ERROR_LIMIT;
+  return [...errors.slice(0, IMPORT_ERROR_LIMIT), `... y ${omitted} error(es) adicional(es).`];
+}
+
+function findTemplateHeaderRow(sheet: ExcelJS.Worksheet) {
+  for (let rowNumber = 1; rowNumber <= Math.min(sheet.rowCount, 8); rowNumber += 1) {
+    const row = sheet.getRow(rowNumber);
+    const values = TEMPLATE_HEADER_LABELS.map((_, index) =>
+      row.getCell(index + 1).text.trim().toLowerCase()
+    );
+
+    if (values.every((value, index) => value === TEMPLATE_HEADER_LABELS[index])) {
+      return rowNumber;
+    }
+  }
+
+  return 1;
+}
+
+async function resolveImportedRouteIds(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  routeNames: string[]
+) {
+  if (routeNames.length === 0) {
+    return { ok: true as const, routeIdByName: new Map<string, number>() };
+  }
+
+  const uniqueRouteNames = Array.from(new Set(routeNames));
+
+  const { data: existingRoutes, error: existingRoutesError } = await supabase
+    .from("route")
+    .select("route_id, nombre")
+    .in("nombre", uniqueRouteNames);
+
+  if (existingRoutesError) {
+    return {
+      ok: false as const,
+      error: "No se pudieron consultar las rutas del archivo.",
+    };
+  }
+
+  const routeIdByName = new Map<string, number>();
+  for (const route of existingRoutes ?? []) {
+    if (!routeIdByName.has(route.nombre)) {
+      routeIdByName.set(route.nombre, route.route_id);
+    }
+  }
+
+  const missingRouteNames = uniqueRouteNames.filter((routeName) => !routeIdByName.has(routeName));
+  if (missingRouteNames.length === 0) {
+    return { ok: true as const, routeIdByName };
+  }
+
+  const { data: createdRoutes, error: createdRoutesError } = await supabase
+    .from("route")
+    .insert(
+      missingRouteNames.map((routeName) => ({
+        nombre: routeName,
+        visit_period: null,
+        day: null,
+        assigned_user: null,
+        is_active: true,
+      }))
+    )
+    .select("route_id, nombre");
+
+  if (createdRoutesError) {
+    return {
+      ok: false as const,
+      error: "No se pudieron crear las rutas faltantes del archivo.",
+    };
+  }
+
+  for (const route of createdRoutes ?? []) {
+    routeIdByName.set(route.nombre, route.route_id);
+  }
+
+  const unresolvedRouteNames = missingRouteNames.filter((routeName) => !routeIdByName.has(routeName));
+  if (unresolvedRouteNames.length > 0) {
+    return {
+      ok: false as const,
+      error: "No se pudieron resolver todas las rutas del archivo.",
+    };
+  }
+
+  return { ok: true as const, routeIdByName };
+}
+
+export async function importEstablishmentsTemplateAction(
+  _prevState: EstablishmentImportState,
+  formData: FormData
+): Promise<EstablishmentImportState> {
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return {
+      error: "Selecciona un archivo Excel (.xlsx) para importar.",
+      success: null,
+      details: [],
+    };
+  }
+
+  if (!file.name.toLowerCase().endsWith(".xlsx")) {
+    return {
+      error: "El archivo debe tener extension .xlsx.",
+      success: null,
+      details: [],
+    };
+  }
+
+  const context = await getAuthorizedEstablishmentClient();
+  if ("error" in context) {
+    return {
+      error: context.error,
+      success: null,
+      details: [],
+    };
+  }
+
+  const { supabase } = context;
+
+  const workbook = new ExcelJS.Workbook();
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbookBuffer = Buffer.from(arrayBuffer) as unknown as Parameters<
+      typeof workbook.xlsx.load
+    >[0];
+    await workbook.xlsx.load(workbookBuffer);
+  } catch {
+    return {
+      error: "No se pudo leer el archivo Excel. Verifica el formato de la plantilla.",
+      success: null,
+      details: [],
+    };
+  }
+
+  const sheet = workbook.getWorksheet("Establecimientos") ?? workbook.worksheets[0];
+
+  if (!sheet) {
+    return {
+      error: "El archivo no contiene hojas para importar.",
+      success: null,
+      details: [],
+    };
+  }
+
+  const headerRow = findTemplateHeaderRow(sheet);
+  const rowsToImport: ImportedEstablishmentRow[] = [];
+  const errors: string[] = [];
+
+  for (let rowNumber = headerRow + 1; rowNumber <= sheet.rowCount; rowNumber += 1) {
+    const row = sheet.getRow(rowNumber);
+    const route = row.getCell(1).text.trim();
+    const name = row.getCell(2).text.trim();
+    const direction = row.getCell(3).text.trim();
+    const province = row.getCell(4).text.trim();
+    const canton = row.getCell(5).text.trim();
+    const district = row.getCell(6).text.trim();
+    const coordinates = row.getCell(7).text.trim();
+    const status = row.getCell(8).text.trim();
+
+    if (!route && !name && !direction && !province && !canton && !district && !coordinates && !status) {
+      continue;
+    }
+
+    const parsed = parseEstablishmentImportRow({
+      rowNumber,
+      route,
+      name,
+      direction,
+      province,
+      canton,
+      district,
+      coordinates,
+      status,
+    });
+
+    if (!parsed.ok) {
+      errors.push(parsed.error);
+      continue;
+    }
+
+    rowsToImport.push({
+      routeName: parsed.data.routeName,
+      name: parsed.data.name,
+      direction: parsed.data.direction,
+      province: parsed.data.province,
+      canton: parsed.data.canton,
+      district: parsed.data.district,
+      lat: parsed.data.lat,
+      long: parsed.data.lng,
+      is_active: parsed.data.isActive,
+    });
+  }
+
+  if (rowsToImport.length === 0) {
+    return {
+      error:
+        errors.length > 0
+          ? "No se importo ningun establecimiento por errores de validacion."
+          : "La plantilla no contiene filas con datos para importar.",
+      success: null,
+      details: summarizeImportErrors(errors),
+    };
+  }
+
+  const resolvedRoutes = await resolveImportedRouteIds(
+    supabase,
+    rowsToImport.map((row) => row.routeName)
+  );
+
+  if (!resolvedRoutes.ok) {
+    return {
+      error: resolvedRoutes.error,
+      success: null,
+      details: summarizeImportErrors(errors),
+    };
+  }
+
+  const rowsToInsert: Array<{
+    name: string;
+    direction: string;
+    province: string;
+    canton: string;
+    district: string;
+    lat: number | null;
+    long: number | null;
+    is_active: boolean;
+    route_id: number;
+  }> = [];
+  for (const row of rowsToImport) {
+    const routeId = resolvedRoutes.routeIdByName.get(row.routeName);
+    if (!routeId) {
+      return {
+        error: `No se pudo resolver la ruta "${row.routeName}" para importar los establecimientos.`,
+        success: null,
+        details: summarizeImportErrors(errors),
+      };
+    }
+
+    rowsToInsert.push({
+      name: row.name,
+      direction: row.direction,
+      province: row.province,
+      canton: row.canton,
+      district: row.district,
+      lat: row.lat,
+      long: row.long,
+      is_active: row.is_active,
+      route_id: routeId,
+    });
+  }
+
+  const { error } = await supabase.from("establishment").insert(rowsToInsert);
+  if (error) {
+    return {
+      error: "No se pudo completar la importacion. Intenta nuevamente.",
+      success: null,
+      details: summarizeImportErrors(errors),
+    };
+  }
+
+  revalidatePath("/establecimientos");
+
+  const importedCount = rowsToInsert.length;
+  const skippedCount = errors.length;
+  const success =
+    skippedCount > 0
+      ? `Se importaron ${importedCount} establecimiento(s). ${skippedCount} fila(s) fueron omitidas.`
+      : `Se importaron ${importedCount} establecimiento(s).`;
+
+  return {
+    error: null,
+    success,
+    details: summarizeImportErrors(errors),
+  };
+}
+
 export async function createEstablishmentAction(
   _prevState: EstablishmentFormState,
   formData: FormData
@@ -165,6 +502,9 @@ export async function createEstablishmentAction(
   const name = String(formData.get("name") ?? "").trim();
   const routeId = parseRouteId(formData.get("routeId"));
   const direction = String(formData.get("direction") ?? "").trim();
+  const province = String(formData.get("province") ?? "").trim();
+  const canton = String(formData.get("canton") ?? "").trim();
+  const district = String(formData.get("district") ?? "").trim();
   const latResult = parseOptionalCoordinate(formData.get("lat"), -90, 90);
   const lngResult = parseOptionalCoordinate(formData.get("lng"), -180, 180);
   const isActive = parseIsActive(formData.get("status"));
@@ -172,6 +512,16 @@ export async function createEstablishmentAction(
 
   if (!name) {
     return { error: "El nombre es obligatorio." };
+  }
+
+  const locationError = validateRequiredLocationFields({
+    direction,
+    province,
+    canton,
+    district,
+  });
+  if (locationError) {
+    return { error: locationError };
   }
 
   if (latResult.error || lngResult.error) {
@@ -200,7 +550,10 @@ export async function createEstablishmentAction(
     .insert({
       name,
       route_id: routeId,
-      direction: direction || null,
+      direction,
+      province,
+      canton,
+      district,
       lat: latResult.value,
       long: lngResult.value,
       is_active: isActive,
@@ -230,6 +583,9 @@ export async function updateEstablishmentAction(
   const name = String(formData.get("name") ?? "").trim();
   const routeId = parseRouteId(formData.get("routeId"));
   const direction = String(formData.get("direction") ?? "").trim();
+  const province = String(formData.get("province") ?? "").trim();
+  const canton = String(formData.get("canton") ?? "").trim();
+  const district = String(formData.get("district") ?? "").trim();
   const latResult = parseOptionalCoordinate(formData.get("lat"), -90, 90);
   const lngResult = parseOptionalCoordinate(formData.get("lng"), -180, 180);
   const isActive = parseIsActive(formData.get("status"));
@@ -241,6 +597,16 @@ export async function updateEstablishmentAction(
 
   if (!name) {
     return { error: "El nombre es obligatorio." };
+  }
+
+  const locationError = validateRequiredLocationFields({
+    direction,
+    province,
+    canton,
+    district,
+  });
+  if (locationError) {
+    return { error: locationError };
   }
 
   if (latResult.error || lngResult.error) {
@@ -269,7 +635,10 @@ export async function updateEstablishmentAction(
     .update({
       name,
       route_id: routeId,
-      direction: direction || null,
+      direction,
+      province,
+      canton,
+      district,
       lat: latResult.value,
       long: lngResult.value,
       is_active: isActive,

@@ -1212,6 +1212,7 @@ export default async function RoleHomePage({ params, searchParams }: PageProps) 
 
           <HeaderActions
             actions={[
+              { label: "Resumen rutas", href: "/rutas/resumen" },
               { label: "Ir a registros", href: "/registros" },
               { label: "Ir a reportes", href: "/reportes" },
               { label: "Ir a tareas", href: "/tareas" },
@@ -1290,6 +1291,7 @@ export default async function RoleHomePage({ params, searchParams }: PageProps) 
 
           <HeaderActions
             actions={[
+              { label: "Resumen rutas", href: "/rutas/resumen" },
               { label: "Ver tareas", href: "/tareas" },
               { label: "Ver rutas", href: "/rutas" },
               { label: "Crear registro", href: "/registros" },

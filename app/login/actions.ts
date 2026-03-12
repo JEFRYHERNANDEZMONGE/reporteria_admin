@@ -13,6 +13,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type LoginActionState = {
   error: string | null;
+  email?: string;
 };
 
 export async function loginAction(
@@ -23,7 +24,7 @@ export async function loginAction(
   const password = String(formData.get("password") ?? "");
 
   if (!email || !password) {
-    return { error: "Debes ingresar correo y contrasena." };
+    return { error: "Debes ingresar correo y contrasena.", email };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -33,7 +34,7 @@ export async function loginAction(
   });
 
   if (error || !data.user) {
-    return { error: "Credenciales invalidas." };
+    return { error: "Credenciales invalidas.", email };
   }
 
   let profile: Awaited<ReturnType<typeof getCurrentUserProfile>>;
@@ -43,6 +44,7 @@ export async function loginAction(
     await supabase.auth.signOut();
     return {
       error: "No fue posible validar tu rol en este momento. Intenta nuevamente.",
+      email,
     };
   }
 
@@ -50,6 +52,7 @@ export async function loginAction(
     await supabase.auth.signOut();
     return {
       error: "No se encontro un rol para este usuario. Contacta al administrador.",
+      email,
     };
   }
 
@@ -57,6 +60,7 @@ export async function loginAction(
     await supabase.auth.signOut();
     return {
       error: "Tu usuario esta inactivo. Contacta al administrador.",
+      email,
     };
   }
 

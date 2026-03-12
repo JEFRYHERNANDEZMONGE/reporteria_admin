@@ -42,7 +42,11 @@ export function SearchableCombobox<TItem>({
   const normalizedQuery = query.trim().toLowerCase();
 
   const filteredItems = useMemo(() => {
+<<<<<<< Updated upstream
     if (!normalizedQuery) return items;
+=======
+    if (!normalizedQuery) return [];
+>>>>>>> Stashed changes
 
     return items.filter((item) => {
       const label = getItemLabel(item).toLowerCase();
@@ -63,7 +67,11 @@ export function SearchableCombobox<TItem>({
     return () => document.removeEventListener("mousedown", onDocumentClick);
   }, []);
 
+<<<<<<< Updated upstream
   const shouldShowList = open && !disabled;
+=======
+  const shouldShowList = open && normalizedQuery.length > 0;
+>>>>>>> Stashed changes
 
   const handleSelect = (item: TItem) => {
     onSelect(item);
@@ -89,12 +97,18 @@ export function SearchableCombobox<TItem>({
             setHighlightedIndex(0);
           }}
           onFocus={() => {
+<<<<<<< Updated upstream
             setOpen(true);
             setHighlightedIndex(0);
           }}
           onClick={() => {
             setOpen(true);
             setHighlightedIndex(0);
+=======
+            if (normalizedQuery) {
+              setOpen(true);
+            }
+>>>>>>> Stashed changes
           }}
           onKeyDown={(event) => {
             if (!shouldShowList || filteredItems.length === 0) return;

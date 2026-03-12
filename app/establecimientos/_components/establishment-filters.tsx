@@ -63,7 +63,7 @@ export function EstablishmentFilters({
           name="q"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Nombre, direccion o ruta"
+          placeholder="Nombre, direccion, ubicacion o ruta"
           className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
         />
       </label>

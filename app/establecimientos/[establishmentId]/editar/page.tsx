@@ -24,7 +24,9 @@ export default async function EditEstablishmentPage({ params }: PageProps) {
   ] = await Promise.all([
     supabase
       .from("establishment")
-      .select("establishment_id, name, route_id, direction, lat, lng:long, is_active")
+      .select(
+        "establishment_id, name, route_id, direction, province, canton, district, lat, lng:long, is_active"
+      )
       .eq("establishment_id", parsedEstablishmentId)
       .maybeSingle(),
     supabase

@@ -14,9 +14,12 @@ type NavItem = {
   enabled: boolean;
 };
 
-function isItemActive(pathname: string, href: string) {
-  if (href === "/") return pathname === href;
-  return pathname === href || pathname.startsWith(`${href}/`);
+function getActiveHref(pathname: string, items: NavItem[]) {
+  const matched = items
+    .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+    .sort((left, right) => right.href.length - left.href.length);
+
+  return matched[0]?.href ?? null;
 }
 
 export function SidebarNav({ role }: { role: AppRole }) {
@@ -36,6 +39,12 @@ export function SidebarNav({ role }: { role: AppRole }) {
   const navItems: NavItem[] = [
     { label: "Dashboard", href: roleHomePath(role), section: "principal", enabled: true },
     { label: "Rutas", href: "/rutas", section: "operacion", enabled: canAccessRoutes },
+    {
+      label: "Resumen rutas",
+      href: "/rutas/resumen",
+      section: "operacion",
+      enabled: canAccessRoutes,
+    },
     { label: "Tareas", href: "/tareas", section: "operacion", enabled: canAccessTasks },
     {
       label: "Establecimientos",
@@ -53,6 +62,7 @@ export function SidebarNav({ role }: { role: AppRole }) {
 
   const principal = navItems.filter((item) => item.section === "principal" && item.enabled);
   const operacion = navItems.filter((item) => item.section === "operacion" && item.enabled);
+  const activeHref = getActiveHref(pathname, navItems.filter((item) => item.enabled));
 
   const navClasses = "h-full bg-white p-4 lg:w-[260px]";
 
@@ -83,7 +93,7 @@ export function SidebarNav({ role }: { role: AppRole }) {
           PRINCIPAL
         </p>
         {principal.map((item) => {
-          const active = isItemActive(pathname, item.href);
+          const active = activeHref === item.href;
           return (
             <Link
               key={item.label}
@@ -103,7 +113,7 @@ export function SidebarNav({ role }: { role: AppRole }) {
         </p>
         <div className="subtle-scrollbar mt-1 min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden pr-1">
           {operacion.map((item) => {
-            const active = isItemActive(pathname, item.href);
+            const active = activeHref === item.href;
             return (
               <Link
                 key={item.label}

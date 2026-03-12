@@ -109,14 +109,22 @@ export default async function RoutesListPage({ searchParams }: PageProps) {
             <p className="text-[12px] text-[#5A7984]">Operacion/Rutas</p>
             <h1 className="text-[34px] font-semibold leading-none text-foreground">Rutas</h1>
           </div>
-          {canManage ? (
+          <div className="flex flex-wrap items-center gap-2">
             <Link
-              href="/rutas/nueva"
-              className="rounded-[8px] bg-foreground px-4 py-2 text-[13px] font-semibold text-white"
+              href="/rutas/resumen"
+              className="rounded-[8px] border border-[var(--border)] bg-white px-4 py-2 text-[13px] font-semibold text-foreground"
             >
-              Agregar ruta
+              Resumen rutas
             </Link>
-          ) : null}
+            {canManage ? (
+              <Link
+                href="/rutas/nueva"
+                className="rounded-[8px] bg-foreground px-4 py-2 text-[13px] font-semibold text-white"
+              >
+                Agregar ruta
+              </Link>
+            ) : null}
+          </div>
         </div>
       </header>
 

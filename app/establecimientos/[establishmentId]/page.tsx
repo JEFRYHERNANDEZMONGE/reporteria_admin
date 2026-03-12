@@ -20,11 +20,13 @@ export default async function EstablishmentDetailPage({ params }: PageProps) {
   const establishmentQuery = canManage
     ? supabase
         .from("establishment")
-        .select("establishment_id, name, direction, lat, lng:long, route_id, is_active, route:route_id(nombre)")
+        .select(
+          "establishment_id, name, direction, province, canton, district, lat, lng:long, route_id, is_active, route:route_id(nombre)"
+        )
         .eq("establishment_id", parsedEstablishmentId)
     : supabase
         .from("establishment")
-        .select("establishment_id, name, direction, lat, lng:long, route_id, is_active")
+        .select("establishment_id, name, direction, province, canton, district, lat, lng:long, route_id, is_active")
         .eq("establishment_id", parsedEstablishmentId);
 
   const { data: establishment, error } = await establishmentQuery.maybeSingle();
@@ -152,7 +154,7 @@ export default async function EstablishmentDetailPage({ params }: PageProps) {
       </section>
 
       <section className="rounded-[12px] border border-[var(--border)] bg-white p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <article className="rounded-[10px] border border-[var(--border)] bg-[#F8FAF8] p-3">
             <p className="text-[12px] font-semibold text-[var(--muted)]">Ruta</p>
             <p className="mt-1 text-[14px] font-semibold text-foreground">{routeName}</p>
@@ -161,6 +163,14 @@ export default async function EstablishmentDetailPage({ params }: PageProps) {
             <p className="text-[12px] font-semibold text-[var(--muted)]">Direccion</p>
             <p className="mt-1 text-[14px] font-semibold text-foreground">
               {establishment.direction || "-"}
+            </p>
+          </article>
+          <article className="rounded-[10px] border border-[var(--border)] bg-[#F8FAF8] p-3">
+            <p className="text-[12px] font-semibold text-[var(--muted)]">Provincia / Canton / Distrito</p>
+            <p className="mt-1 text-[14px] font-semibold text-foreground">
+              {[establishment.province, establishment.canton, establishment.district]
+                .filter(Boolean)
+                .join(" / ") || "-"}
             </p>
           </article>
           <article className="rounded-[10px] border border-[var(--border)] bg-[#F8FAF8] p-3">
