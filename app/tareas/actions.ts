@@ -95,7 +95,7 @@ export async function createTaskAction(
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const priority = String(formData.get("priority") ?? "media");
-  const dueToInput = String(formData.get("due_to") ?? "").trim();
+  const dueToDaysInput = String(formData.get("due_to_days") ?? "").trim();
   const assignedUserIds = parseAssignedUserIds(formData);
 
   if (!title) {
@@ -113,7 +113,15 @@ export async function createTaskAction(
   }
 
   const { supabase } = actor;
-  const dueTo = dueToInput || null;
+  let dueTo: string | null = null;
+  if (dueToDaysInput && !Number.isNaN(Number(dueToDaysInput))) {
+    const days = Number(dueToDaysInput);
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    dueTo = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
   const { data: insertedTask, error } = await supabase
     .from("task")
     .insert({
@@ -155,7 +163,7 @@ export async function updateTaskAction(
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const priority = String(formData.get("priority") ?? "media");
-  const dueToInput = String(formData.get("due_to") ?? "").trim();
+  const dueToDaysInput = String(formData.get("due_to_days") ?? "").trim();
   const assignedUserIds = parseAssignedUserIds(formData);
 
   if (!taskId || Number.isNaN(taskId)) {
@@ -177,7 +185,15 @@ export async function updateTaskAction(
   }
 
   const { supabase } = actor;
-  const dueTo = dueToInput || null;
+  let dueTo: string | null = null;
+  if (dueToDaysInput && !Number.isNaN(Number(dueToDaysInput))) {
+    const days = Number(dueToDaysInput);
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    dueTo = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
   const { error } = await supabase
     .from("task")
     .update({

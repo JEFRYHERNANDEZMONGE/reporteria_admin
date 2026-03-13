@@ -37,12 +37,12 @@ export default async function EditRoutePage({ params }: PageProps) {
     supabase.rpc("route_day_options"),
     supabase
       .from("establishment")
-      .select("establishment_id, name, direction")
+      .select("establishment_id, name, direction, province, canton")
       .is("route_id", null)
       .order("name", { ascending: true }),
     supabase
       .from("establishment")
-      .select("establishment_id, name, direction")
+      .select("establishment_id, name, direction, province, canton")
       .eq("route_id", parsedRouteId)
       .order("name", { ascending: true }),
   ]);

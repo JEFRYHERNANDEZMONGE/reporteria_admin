@@ -16,7 +16,7 @@ export default async function NewRoutePage() {
     supabase.rpc("route_day_options"),
     supabase
       .from("establishment")
-      .select("establishment_id, name, direction")
+      .select("establishment_id, name, direction, province, canton")
       .is("route_id", null)
       .order("name", { ascending: true }),
   ]);

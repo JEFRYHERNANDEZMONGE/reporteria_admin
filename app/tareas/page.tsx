@@ -60,7 +60,7 @@ export default async function TasksListPage({ searchParams }: PageProps) {
 
   let taskIds: number[] | null = null;
   const assignedStatesByTask = new Map<number, string[]>();
-  const assignedNamesByTask = new Map<number, string[]>();
+  const assignedByStateByTask = new Map<number, Record<string, string[]>>();
 
   if (role === "rutero") {
     const profile = await getCurrentUserProfile(user.id);
@@ -79,7 +79,9 @@ export default async function TasksListPage({ searchParams }: PageProps) {
     taskIds = (assignedRows ?? []).map((row) => row.task_id);
     (assignedRows ?? []).forEach((row) => {
       assignedStatesByTask.set(row.task_id, [row.task_state]);
-      assignedNamesByTask.set(row.task_id, [profile.role === "rutero" ? "Tu" : ""]);
+      assignedByStateByTask.set(row.task_id, {
+        [row.task_state]: ["Tu"],
+      });
     });
   }
 
@@ -104,11 +106,14 @@ export default async function TasksListPage({ searchParams }: PageProps) {
           : "";
 
       if (userName) {
-        const currentNames = assignedNamesByTask.get(row.task_id) ?? [];
-        if (!currentNames.includes(userName)) {
-          currentNames.push(userName);
+        const byState = assignedByStateByTask.get(row.task_id) ?? {};
+        if (!byState[row.task_state]) {
+          byState[row.task_state] = [];
         }
-        assignedNamesByTask.set(row.task_id, currentNames);
+        if (!byState[row.task_state].includes(userName)) {
+          byState[row.task_state].push(userName);
+        }
+        assignedByStateByTask.set(row.task_id, byState);
       }
     });
   }
@@ -219,18 +224,34 @@ export default async function TasksListPage({ searchParams }: PageProps) {
                         Estado
                       </p>
                       <p className="text-[13px] text-[var(--muted)]">
-                        {assignedStatesByTask.get(task.task_id)?.join(", ") ?? "-"}
+                        {(() => {
+                          const states = assignedStatesByTask.get(task.task_id) ?? [];
+                          if (states.length === 0) return "-";
+                          if (states.every(s => s === "Pendiente")) return "Pendiente";
+                          if (states.every(s => s === "Completada")) return "Completada";
+                          if (states.every(s => s === "Atrasada")) return "Atrasada";
+                          
+                          // If there's a mix (someone started/completed but not everyone)
+                          return "En proceso";
+                        })()}
                       </p>
                     </div>
                     <div className="mt-2 md:mt-0">
                       <p className="text-[12px] font-semibold text-[var(--muted)] md:hidden">
                         Asignado a
                       </p>
-                      <p className="text-[13px] text-[var(--muted)]">
-                        {role === "rutero"
-                          ? "Tu"
-                          : assignedNamesByTask.get(task.task_id)?.join(", ") ?? "-"}
-                      </p>
+                      <div className="flex flex-col gap-1">
+                        {(() => {
+                          if (role === "rutero") return <p className="text-[13px] text-[var(--muted)]">Tu</p>;
+                          const byState = assignedByStateByTask.get(task.task_id);
+                          if (!byState || Object.keys(byState).length === 0) return <p className="text-[13px] text-[var(--muted)]">-</p>;
+                          return Object.entries(byState).map(([state, names]) => (
+                            <p key={state} className="text-[13px] text-[var(--muted)]">
+                              <span className="font-medium text-foreground">{state}:</span> {names.join(", ")}
+                            </p>
+                          ));
+                        })()}
+                      </div>
                     </div>
                     <div className="mt-3 flex items-center gap-2 md:mt-0">
                       {(role === "admin" || role === "editor") && (

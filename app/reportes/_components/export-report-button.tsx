@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AdaptiveSelect } from "@/app/_components/adaptive-select";
 import type { AppRole } from "@/lib/auth/roles";
 import type { ReportType } from "@/lib/reports/types";
 
@@ -128,18 +129,16 @@ export function ExportReportButton({
                   <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
                     Empresa
                   </span>
-                  <select
+                  <AdaptiveSelect
                     name="companyId"
+                    emptyOptionLabel="Todas"
+                    placeholder="Buscar empresa"
+                    options={companies.map((option) => ({
+                      value: String(option.id),
+                      label: option.label,
+                    }))}
                     className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-                    defaultValue=""
-                  >
-                    <option value="">Todas</option>
-                    {companies.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
               ) : null}
 
@@ -148,18 +147,16 @@ export function ExportReportButton({
                   <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
                     Usuario
                   </span>
-                  <select
+                  <AdaptiveSelect
                     name="userId"
+                    emptyOptionLabel="Todos"
+                    placeholder="Buscar usuario"
+                    options={users.map((option) => ({
+                      value: String(option.id),
+                      label: option.label,
+                    }))}
                     className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-                    defaultValue=""
-                  >
-                    <option value="">Todos</option>
-                    {users.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
               ) : null}
 
@@ -168,18 +165,16 @@ export function ExportReportButton({
                   <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
                     Ruta
                   </span>
-                  <select
+                  <AdaptiveSelect
                     name="routeId"
+                    emptyOptionLabel="Todas"
+                    placeholder="Buscar ruta"
+                    options={routes.map((option) => ({
+                      value: String(option.id),
+                      label: option.label,
+                    }))}
                     className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-                    defaultValue=""
-                  >
-                    <option value="">Todas</option>
-                    {routes.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
               ) : null}
 
@@ -188,18 +183,16 @@ export function ExportReportButton({
                   <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
                     Establecimiento
                   </span>
-                  <select
+                  <AdaptiveSelect
                     name="establishmentId"
+                    emptyOptionLabel="Todos"
+                    placeholder="Buscar establecimiento"
+                    options={establishments.map((option) => ({
+                      value: String(option.id),
+                      label: option.label,
+                    }))}
                     className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-                    defaultValue=""
-                  >
-                    <option value="">Todos</option>
-                    {establishments.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
               ) : null}
 
@@ -208,18 +201,16 @@ export function ExportReportButton({
                   <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
                     Producto
                   </span>
-                  <select
+                  <AdaptiveSelect
                     name="productId"
+                    emptyOptionLabel="Todos"
+                    placeholder="Buscar producto"
+                    options={products.map((option) => ({
+                      value: String(option.id),
+                      label: option.label,
+                    }))}
                     className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-                    defaultValue=""
-                  >
-                    <option value="">Todos</option>
-                    {products.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
               ) : null}
 

@@ -7,6 +7,7 @@ type SearchableComboboxProps<TItem> = {
   getItemId: (item: TItem) => string | number;
   getItemLabel: (item: TItem) => string;
   getItemKeywords?: (item: TItem) => string;
+  inputValue?: string;
   placeholder?: string;
   emptyMessage?: string;
   loading?: boolean;
@@ -15,6 +16,9 @@ type SearchableComboboxProps<TItem> = {
   className?: string;
   listClassName?: string;
   inputClassName?: string;
+  clearOnSelect?: boolean;
+  onClear?: () => void;
+  onInputValueChange?: (value: string) => void;
   onSelect: (item: TItem) => void;
 };
 
@@ -23,6 +27,7 @@ export function SearchableCombobox<TItem>({
   getItemId,
   getItemLabel,
   getItemKeywords,
+  inputValue,
   placeholder = "Buscar...",
   emptyMessage = "Sin resultados.",
   loading = false,
@@ -31,31 +36,45 @@ export function SearchableCombobox<TItem>({
   className,
   listClassName,
   inputClassName,
+  clearOnSelect = true,
+  onClear,
+  onInputValueChange,
   onSelect,
 }: SearchableComboboxProps<TItem>) {
-  const [query, setQuery] = useState("");
+  const [internalQuery, setInternalQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [showAllOptions, setShowAllOptions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
+  const query = inputValue ?? internalQuery;
+
+  const setQuery = (nextValue: string) => {
+    if (inputValue === undefined) {
+      setInternalQuery(nextValue);
+    }
+
+    onInputValueChange?.(nextValue);
+  };
 
   const normalizedQuery = query.trim().toLowerCase();
 
   const filteredItems = useMemo(() => {
-    if (!normalizedQuery) return [];
+    if (showAllOptions || !normalizedQuery) return items;
 
     return items.filter((item) => {
       const label = getItemLabel(item).toLowerCase();
       const keywords = (getItemKeywords?.(item) ?? "").toLowerCase();
       return label.includes(normalizedQuery) || keywords.includes(normalizedQuery);
     });
-  }, [getItemKeywords, getItemLabel, items, normalizedQuery]);
+  }, [getItemKeywords, getItemLabel, items, normalizedQuery, showAllOptions]);
 
   useEffect(() => {
     const onDocumentClick = (event: MouseEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) {
         setOpen(false);
         setHighlightedIndex(-1);
+        setShowAllOptions(false);
       }
     };
 
@@ -63,13 +82,14 @@ export function SearchableCombobox<TItem>({
     return () => document.removeEventListener("mousedown", onDocumentClick);
   }, []);
 
-  const shouldShowList = open && !disabled && normalizedQuery.length > 0;
+  const shouldShowList = open && !disabled;
 
   const handleSelect = (item: TItem) => {
     onSelect(item);
-    setQuery("");
+    setQuery(clearOnSelect ? "" : getItemLabel(item));
     setOpen(false);
     setHighlightedIndex(-1);
+    setShowAllOptions(false);
   };
 
   return (
@@ -86,13 +106,18 @@ export function SearchableCombobox<TItem>({
           onChange={(event) => {
             setQuery(event.target.value);
             setOpen(true);
+            setShowAllOptions(false);
             setHighlightedIndex(0);
           }}
           onFocus={() => {
-            if (normalizedQuery) {
-              setOpen(true);
-              setHighlightedIndex(0);
-            }
+            setOpen(true);
+            setShowAllOptions(true);
+            setHighlightedIndex(items.length > 0 ? 0 : -1);
+          }}
+          onClick={() => {
+            setOpen(true);
+            setShowAllOptions(true);
+            setHighlightedIndex(items.length > 0 ? 0 : -1);
           }}
           onKeyDown={(event) => {
             if (!shouldShowList || filteredItems.length === 0) return;
@@ -122,6 +147,7 @@ export function SearchableCombobox<TItem>({
             if (event.key === "Escape") {
               setOpen(false);
               setHighlightedIndex(-1);
+              setShowAllOptions(false);
             }
           }}
           placeholder={placeholder}
@@ -140,6 +166,8 @@ export function SearchableCombobox<TItem>({
               setQuery("");
               setOpen(false);
               setHighlightedIndex(-1);
+              setShowAllOptions(false);
+              onClear?.();
             }}
             className="text-[16px] leading-none text-[#8A9BA7] hover:text-[#405C62]"
             aria-label="Limpiar búsqueda"

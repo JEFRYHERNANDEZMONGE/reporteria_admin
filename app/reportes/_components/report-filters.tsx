@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { AdaptiveSelect } from "@/app/_components/adaptive-select";
 
 type CompanyOption = {
   company_id: number;
@@ -127,36 +128,34 @@ export function ReportFilters({
       {showCompanyFilter ? (
         <label className="w-full max-w-[220px]">
           <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">Empresa</span>
-          <select
+          <AdaptiveSelect
             value={companyId}
-            onChange={(event) => setCompanyId(event.target.value)}
+            onValueChange={setCompanyId}
+            emptyOptionLabel="Todas"
+            placeholder="Buscar empresa"
+            options={companies.map((company) => ({
+              value: String(company.company_id),
+              label: company.name,
+            }))}
             className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-          >
-            <option value="">Todas</option>
-            {companies.map((company) => (
-              <option key={company.company_id} value={company.company_id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
+          />
         </label>
       ) : null}
 
       {showUserFilter ? (
         <label className="w-full max-w-[220px]">
           <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">Usuario</span>
-          <select
+          <AdaptiveSelect
             value={userId}
-            onChange={(event) => setUserId(event.target.value)}
+            onValueChange={setUserId}
+            emptyOptionLabel="Todos"
+            placeholder="Buscar usuario"
+            options={users.map((user) => ({
+              value: String(user.user_id),
+              label: user.name,
+            }))}
             className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-          >
-            <option value="">Todos</option>
-            {users.map((user) => (
-              <option key={user.user_id} value={user.user_id}>
-                {user.name}
-              </option>
-            ))}
-          </select>
+          />
         </label>
       ) : null}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { AdaptiveSelect } from "@/app/_components/adaptive-select";
 
 type RouteOption = {
   routeId: number;
@@ -31,17 +32,16 @@ export function RouteSummarySelector({
       <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
         Seleccionar ruta
       </span>
-      <select
+      <AdaptiveSelect
         value={String(selectedRouteId)}
-        onChange={(event) => handleChange(event.target.value)}
+        onValueChange={handleChange}
+        placeholder="Buscar ruta"
+        options={routes.map((route) => ({
+          value: String(route.routeId),
+          label: route.name,
+        }))}
         className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-      >
-        {routes.map((route) => (
-          <option key={route.routeId} value={route.routeId}>
-            {route.name}
-          </option>
-        ))}
-      </select>
+      />
     </label>
   );
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getUserRoleFromProfile } from "@/lib/auth/profile";
+import { parseCompanyReportEmailsInput } from "@/lib/company/report-emails";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type CompanyFormState = {
@@ -46,10 +47,16 @@ export async function createCompanyAction(
 ): Promise<CompanyFormState> {
   const name = String(formData.get("name") ?? "").trim();
   const direction = String(formData.get("direction") ?? "").trim();
+  const parsedReportEmails = parseCompanyReportEmailsInput(formData.get("reportEmails"));
+  const reportEmails = parsedReportEmails.emails;
   const isActive = parseIsActive(formData.get("status"));
 
   if (!name) {
     return { error: "El nombre es obligatorio." };
+  }
+
+  if (parsedReportEmails.error) {
+    return { error: parsedReportEmails.error };
   }
 
   const context = await getAuthorizedCompanyClient();
@@ -61,6 +68,7 @@ export async function createCompanyAction(
   const { error } = await supabase.from("company").insert({
     name,
     direction: direction || null,
+    report_emails: reportEmails,
     is_active: isActive,
   });
 
@@ -139,6 +147,8 @@ export async function updateCompanyAction(
   const companyId = Number(formData.get("companyId"));
   const name = String(formData.get("name") ?? "").trim();
   const direction = String(formData.get("direction") ?? "").trim();
+  const parsedReportEmails = parseCompanyReportEmailsInput(formData.get("reportEmails"));
+  const reportEmails = parsedReportEmails.emails;
   const isActive = parseIsActive(formData.get("status"));
 
   if (!companyId || Number.isNaN(companyId)) {
@@ -147,6 +157,10 @@ export async function updateCompanyAction(
 
   if (!name) {
     return { error: "El nombre es obligatorio." };
+  }
+
+  if (parsedReportEmails.error) {
+    return { error: parsedReportEmails.error };
   }
 
   const context = await getAuthorizedCompanyClient();
@@ -160,6 +174,7 @@ export async function updateCompanyAction(
     .update({
       name,
       direction: direction || null,
+      report_emails: reportEmails,
       is_active: isActive,
     })
     .eq("company_id", companyId);

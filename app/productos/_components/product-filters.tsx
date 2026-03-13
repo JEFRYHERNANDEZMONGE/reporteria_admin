@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { AdaptiveSelect } from "@/app/_components/adaptive-select";
 
 type CompanyOption = {
   company_id: number;
@@ -107,19 +108,18 @@ export function ProductFilters({
           <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
             Empresa
           </span>
-          <select
+          <AdaptiveSelect
             name="company"
             value={companyId}
-            onChange={(event) => setCompanyId(event.target.value)}
+            onValueChange={setCompanyId}
+            emptyOptionLabel="Todas"
+            placeholder="Buscar empresa"
+            options={companies.map((company) => ({
+              value: String(company.company_id),
+              label: company.name,
+            }))}
             className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-          >
-            <option value="">Todas</option>
-            {companies.map((company) => (
-              <option key={company.company_id} value={company.company_id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
+          />
         </label>
       ) : null}
     </div>

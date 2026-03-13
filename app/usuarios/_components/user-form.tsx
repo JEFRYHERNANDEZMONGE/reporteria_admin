@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { AdaptiveSelect } from "@/app/_components/adaptive-select";
 import type { UserFormState } from "@/app/usuarios/actions";
 import { APP_ROLES } from "@/lib/auth/roles";
 
@@ -156,20 +157,18 @@ export function UserForm({
               <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
                 Empresa
               </span>
-              <select
+              <AdaptiveSelect
                 name="companyId"
                 defaultValue={userProfile?.company_id ? String(userProfile.company_id) : ""}
                 required
+                emptyOptionLabel="Seleccionar empresa"
+                placeholder="Buscar empresa"
+                options={companies.map((company) => ({
+                  value: String(company.company_id),
+                  label: `${company.name}${company.is_active ? "" : " (Inactiva)"}`,
+                }))}
                 className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-              >
-                <option value="">Seleccionar empresa</option>
-                {companies.map((company) => (
-                  <option key={company.company_id} value={company.company_id}>
-                    {company.name}
-                    {company.is_active ? "" : " (Inactiva)"}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
           ) : null}
 

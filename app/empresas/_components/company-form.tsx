@@ -8,6 +8,7 @@ type Company = {
   company_id: number;
   name: string;
   direction: string | null;
+  report_emails: string[] | null;
   is_active: boolean;
 };
 
@@ -57,6 +58,19 @@ export function CompanyForm({ mode, company, action }: CompanyFormProps) {
             defaultValue={company?.direction ?? ""}
             placeholder="Direccion completa"
             rows={3}
+            className="w-full resize-y rounded-[8px] border border-[var(--border)] px-3 py-2 text-[13px] text-foreground placeholder:text-[var(--placeholder)] outline-none focus:border-foreground"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
+            Correos para reportes
+          </span>
+          <textarea
+            name="reportEmails"
+            defaultValue={company?.report_emails?.join("\n") ?? ""}
+            placeholder="Un correo por linea"
+            rows={4}
             className="w-full resize-y rounded-[8px] border border-[var(--border)] px-3 py-2 text-[13px] text-foreground placeholder:text-[var(--placeholder)] outline-none focus:border-foreground"
           />
         </label>

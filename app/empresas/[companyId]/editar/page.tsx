@@ -18,7 +18,7 @@ export default async function EditCompanyPage({ params }: PageProps) {
 
   const { data: company, error } = await supabase
     .from("company")
-    .select("company_id, name, direction, is_active")
+    .select("company_id, name, direction, is_active, report_emails")
     .eq("company_id", parsedCompanyId)
     .maybeSingle();
 

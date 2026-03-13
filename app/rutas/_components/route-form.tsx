@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
+import { AdaptiveSelect } from "@/app/_components/adaptive-select";
 import type { RouteFormState } from "@/app/rutas/actions";
 import { SearchableCombobox } from "@/app/_components/searchable-combobox";
 
@@ -23,6 +24,8 @@ type EstablishmentOption = {
   establishment_id: number;
   name: string;
   direction: string | null;
+  province: string | null;
+  canton: string | null;
 };
 
 type RouteFormProps = {
@@ -40,6 +43,17 @@ type RouteFormProps = {
 
 const INITIAL_STATE: RouteFormState = { error: null };
 
+function buildLocationOptions(values: Array<string | null>) {
+  return Array.from(
+    new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))),
+  )
+    .sort((left, right) => left.localeCompare(right, "es"))
+    .map((value) => ({
+      value,
+      label: value,
+    }));
+}
+
 export function RouteForm({
   mode,
   route,
@@ -53,6 +67,8 @@ export function RouteForm({
   const [selectedEstablishments, setSelectedEstablishments] = useState<
     EstablishmentOption[]
   >(initialAssignedEstablishments);
+  const [provinceFilter, setProvinceFilter] = useState("");
+  const [cantonFilter, setCantonFilter] = useState("");
 
   const establishmentPool = useMemo(() => {
     const byId = new Map<number, EstablishmentOption>();
@@ -70,17 +86,46 @@ export function RouteForm({
     return Array.from(byId.values());
   }, [availableEstablishments, initialAssignedEstablishments]);
 
-  const availableToAdd = useMemo(() => {
+  const availableWithoutSelection = useMemo(() => {
     const selectedIds = new Set(
       selectedEstablishments.map((item) => item.establishment_id),
     );
 
-    const filtered = establishmentPool.filter(
-      (item) => !selectedIds.has(item.establishment_id),
-    );
-
-    return filtered;
+    return establishmentPool.filter((item) => !selectedIds.has(item.establishment_id));
   }, [establishmentPool, selectedEstablishments]);
+
+  const provinceOptions = useMemo(
+    () => buildLocationOptions(availableWithoutSelection.map((item) => item.province)),
+    [availableWithoutSelection],
+  );
+
+  const cantonOptions = useMemo(() => {
+    const scopedEstablishments = provinceFilter
+      ? availableWithoutSelection.filter((item) => item.province === provinceFilter)
+      : availableWithoutSelection;
+
+    return buildLocationOptions(scopedEstablishments.map((item) => item.canton));
+  }, [availableWithoutSelection, provinceFilter]);
+
+  const effectiveCantonFilter = cantonOptions.some(
+    (option) => option.value === cantonFilter,
+  )
+    ? cantonFilter
+    : "";
+
+  const availableToAdd = useMemo(() => {
+    return availableWithoutSelection.filter((item) => {
+      if (provinceFilter && item.province !== provinceFilter) {
+        return false;
+      }
+
+      if (effectiveCantonFilter && item.canton !== effectiveCantonFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [availableWithoutSelection, effectiveCantonFilter, provinceFilter]);
 
   const addEstablishment = (establishment: EstablishmentOption) => {
     setSelectedEstablishments((prev) => {
@@ -155,18 +200,17 @@ export function RouteForm({
             <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
               Dia de ruta
             </span>
-            <select
+            <AdaptiveSelect
               name="day"
               defaultValue={route?.day ?? ""}
+              emptyOptionLabel="Sin dia asignado"
+              placeholder="Buscar dia"
+              options={dayOptions.map((day) => ({
+                value: day,
+                label: day,
+              }))}
               className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-            >
-              <option value="">Sin dia asignado</option>
-              {dayOptions.map((day) => (
-                <option key={day} value={day}>
-                  {day}
-                </option>
-              ))}
-            </select>
+            />
           </label>
         </div>
 
@@ -179,20 +223,19 @@ export function RouteForm({
             <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
               Usuario asignado
             </span>
-            <select
+            <AdaptiveSelect
               name="assignedUserId"
               defaultValue={
                 route?.assigned_user ? String(route.assigned_user) : ""
               }
+              emptyOptionLabel="Sin asignar"
+              placeholder="Buscar usuario"
+              options={ruteroOptions.map((rutero) => ({
+                value: String(rutero.user_id),
+                label: rutero.name,
+              }))}
               className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-            >
-              <option value="">Sin asignar</option>
-              {ruteroOptions.map((rutero) => (
-                <option key={rutero.user_id} value={rutero.user_id}>
-                  {rutero.name}
-                </option>
-              ))}
-            </select>
+            />
           </label>
         </div>
       </section>
@@ -201,23 +244,69 @@ export function RouteForm({
         <div className="bg-[#5A7A84] p-3">
           <p className="text-[16px] font-semibold text-white">Establecimientos</p>
 
-          <label className="mt-2 block max-w-[360px]">
-            <span className="mb-1.5 block text-[12px] font-semibold text-[#BEBFBF]">
-              Agregar establecimiento
-            </span>
+          <div className="mt-2 grid gap-2 lg:grid-cols-[0.9fr_0.9fr_1.6fr]">
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] font-semibold text-[#BEBFBF]">
+                Provincia
+              </span>
 
-            <div className="rounded-[8px] border border-[var(--border)] bg-white p-2">
-              <SearchableCombobox
-                items={availableToAdd}
-                getItemId={(establishment) => establishment.establishment_id}
-                getItemLabel={(establishment) => establishment.name}
-                getItemKeywords={(establishment) => establishment.direction ?? ""}
-                placeholder="Buscar por nombre"
-                emptyMessage="Sin resultados disponibles"
-                onSelect={addEstablishment}
+              <AdaptiveSelect
+                name="provinceFilter"
+                value={provinceFilter}
+                onValueChange={(value) => {
+                  setProvinceFilter(value);
+                  setCantonFilter("");
+                }}
+                emptyOptionLabel="Todas las provincias"
+                placeholder="Filtrar provincia"
+                options={provinceOptions}
+                className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
               />
-            </div>
-          </label>
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] font-semibold text-[#BEBFBF]">
+                Canton
+              </span>
+
+              <AdaptiveSelect
+                name="cantonFilter"
+                value={effectiveCantonFilter}
+                onValueChange={setCantonFilter}
+                emptyOptionLabel="Todos los cantones"
+                placeholder="Filtrar canton"
+                options={cantonOptions}
+                disabled={cantonOptions.length === 0}
+                className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground disabled:cursor-not-allowed disabled:opacity-70"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] font-semibold text-[#BEBFBF]">
+                Agregar establecimiento
+              </span>
+
+              <div className="rounded-[8px] border border-[var(--border)] bg-white p-2">
+                <SearchableCombobox
+                  items={availableToAdd}
+                  getItemId={(establishment) => establishment.establishment_id}
+                  getItemLabel={(establishment) => establishment.name}
+                  getItemKeywords={(establishment) =>
+                    [
+                      establishment.direction,
+                      establishment.province,
+                      establishment.canton,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                  }
+                  placeholder="Buscar por nombre, direccion o ubicacion"
+                  emptyMessage="Sin resultados disponibles"
+                  onSelect={addEstablishment}
+                />
+              </div>
+            </label>
+          </div>
         </div>
 
         <div className="p-3">

@@ -28,12 +28,16 @@ type TaskFormProps = {
 
 const INITIAL_STATE: TaskFormState = { error: null };
 
-function toInputDate(value: string | null | undefined) {
+function toInputDays(value: string | null | undefined) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  const diffTime = date.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 ? String(diffDays) : "0";
 }
 
 export function TaskForm({
@@ -107,12 +111,14 @@ export function TaskForm({
 
           <label className="block">
             <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
-              Fecha limite
+              Días para hacerla
             </span>
             <input
-              name="due_to"
-              type="date"
-              defaultValue={toInputDate(task?.due_to)}
+              name="due_to_days"
+              type="number"
+              min="0"
+              defaultValue={toInputDays(task?.due_to)}
+              placeholder="0"
               className="h-10 w-full rounded-[8px] border border-[var(--border)] px-3 text-[13px] outline-none focus:border-foreground"
             />
           </label>

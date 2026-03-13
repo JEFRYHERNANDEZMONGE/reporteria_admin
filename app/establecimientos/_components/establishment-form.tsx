@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
+import { AdaptiveSelect } from "@/app/_components/adaptive-select";
 import type { EstablishmentFormState } from "@/app/establecimientos/actions";
 import { SearchableCombobox } from "@/app/_components/searchable-combobox";
 
@@ -139,19 +140,17 @@ export function EstablishmentForm({
             <span className="mb-1.5 block text-[12px] font-semibold text-[var(--muted)]">
               Ruta
             </span>
-            <select
+            <AdaptiveSelect
               name="routeId"
               defaultValue={establishment?.route_id ? String(establishment.route_id) : ""}
+              emptyOptionLabel="Sin ruta asignada"
+              placeholder="Buscar ruta"
+              options={routeOptions.map((route) => ({
+                value: String(route.route_id),
+                label: `${route.nombre}${route.is_active ? "" : " (Inactiva)"}`,
+              }))}
               className="h-10 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 text-[13px] outline-none focus:border-foreground"
-            >
-              <option value="">Sin ruta asignada</option>
-              {routeOptions.map((route) => (
-                <option key={route.route_id} value={route.route_id}>
-                  {route.nombre}
-                  {route.is_active ? "" : " (Inactiva)"}
-                </option>
-              ))}
-            </select>
+            />
           </label>
 
           <label className="block">
