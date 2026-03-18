@@ -191,18 +191,40 @@ async function syncEstablishmentProducts(
 
 const IMPORT_ERROR_LIMIT = 12;
 const IMPORT_BATCH_SIZE = 100;
-const TEMPLATE_HEADER_LABELS = [
-  "ruta",
-  "nombre",
-  "formato",
-  "zona",
-  "direccion",
-  "provincia",
-  "canton",
-  "distrito",
-  "coordenadas",
-  "estado",
-] as const;
+const TEMPLATE_HEADER_ALIASES = {
+  route: ["ruta", "route", "ruta asignada"],
+  name: ["nombre", "establecimiento", "nombre del establecimiento"],
+  format: ["formato", "canal", "tipo de formato"],
+  zone: ["zona", "region", "sector"],
+  direction: ["direccion", "direccion exacta", "direccion detallada"],
+  province: ["provincia"],
+  canton: ["canton", "cantón"],
+  district: ["distrito"],
+  coordinates: [
+    "coordenadas",
+    "coordenada",
+    "lat,long",
+    "latitud,longitud",
+    "latitud y longitud",
+    "latitud / longitud",
+  ],
+  status: ["estado", "activo", "estatus"],
+} as const;
+
+type TemplateColumnKey = keyof typeof TEMPLATE_HEADER_ALIASES;
+
+type TemplateColumnMap = Record<TemplateColumnKey, number>;
+
+function normalizeHeaderCell(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[\r\n]+/g, " ")
+    .replace(/[.:;()[\]{}]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function validateRequiredLocationFields(input: {
   direction: string;
@@ -236,18 +258,31 @@ function summarizeImportErrors(errors: string[]) {
 }
 
 function findTemplateHeaderRow(sheet: ExcelJS.Worksheet) {
-  for (let rowNumber = 1; rowNumber <= Math.min(sheet.rowCount, 8); rowNumber += 1) {
+  for (let rowNumber = 1; rowNumber <= Math.min(sheet.rowCount, 20); rowNumber += 1) {
     const row = sheet.getRow(rowNumber);
-    const values = TEMPLATE_HEADER_LABELS.map((_, index) =>
-      row.getCell(index + 1).text.trim().toLowerCase()
-    );
+    const headerMap = {} as Partial<TemplateColumnMap>;
 
-    if (values.every((value, index) => value === TEMPLATE_HEADER_LABELS[index])) {
-      return rowNumber;
+    for (let cellNumber = 1; cellNumber <= row.cellCount; cellNumber += 1) {
+      const normalizedValue = normalizeHeaderCell(row.getCell(cellNumber).text);
+      if (!normalizedValue) continue;
+
+      const matchedEntry = (Object.entries(TEMPLATE_HEADER_ALIASES) as Array<
+        [TemplateColumnKey, readonly string[]]
+      >).find(([, aliases]) =>
+        aliases.some((alias) => normalizedValue === alias || normalizedValue.includes(alias))
+      );
+
+      if (matchedEntry && !headerMap[matchedEntry[0]]) {
+        headerMap[matchedEntry[0]] = cellNumber;
+      }
+    }
+
+    if ((Object.keys(TEMPLATE_HEADER_ALIASES) as TemplateColumnKey[]).every((key) => headerMap[key])) {
+      return { rowNumber, columns: headerMap as TemplateColumnMap };
     }
   }
 
-  return 1;
+  return null;
 }
 
 async function resolveImportedRouteIds(
@@ -400,6 +435,10 @@ async function insertImportedEstablishmentBatches(
   return { importedCount, errors };
 }
 
+function getTrimmedCellText(row: ExcelJS.Row, columnNumber: number) {
+  return row.getCell(columnNumber).text.trim();
+}
+
 export async function importEstablishmentsTemplateAction(
   _prevState: EstablishmentImportState,
   formData: FormData
@@ -458,22 +497,32 @@ export async function importEstablishmentsTemplateAction(
     };
   }
 
-  const headerRow = findTemplateHeaderRow(sheet);
+  const headerDefinition = findTemplateHeaderRow(sheet);
+  if (!headerDefinition) {
+    return {
+      error: "No se encontro la fila de encabezados esperada en el archivo Excel.",
+      success: null,
+      details: [
+        "Asegurate de incluir columnas para ruta, nombre, direccion, provincia, canton, distrito, coordenadas y estado.",
+      ],
+    };
+  }
+
   const rowsToImport: ImportedEstablishmentRow[] = [];
   const errors: string[] = [];
 
-  for (let rowNumber = headerRow + 1; rowNumber <= sheet.rowCount; rowNumber += 1) {
+  for (let rowNumber = headerDefinition.rowNumber + 1; rowNumber <= sheet.rowCount; rowNumber += 1) {
     const row = sheet.getRow(rowNumber);
-    const route = row.getCell(1).text.trim();
-    const name = row.getCell(2).text.trim();
-    const format = row.getCell(3).text.trim();
-    const zone = row.getCell(4).text.trim();
-    const direction = row.getCell(5).text.trim();
-    const province = row.getCell(6).text.trim();
-    const canton = row.getCell(7).text.trim();
-    const district = row.getCell(8).text.trim();
-    const coordinates = row.getCell(9).text.trim();
-    const status = row.getCell(10).text.trim();
+    const route = getTrimmedCellText(row, headerDefinition.columns.route);
+    const name = getTrimmedCellText(row, headerDefinition.columns.name);
+    const format = getTrimmedCellText(row, headerDefinition.columns.format);
+    const zone = getTrimmedCellText(row, headerDefinition.columns.zone);
+    const direction = getTrimmedCellText(row, headerDefinition.columns.direction);
+    const province = getTrimmedCellText(row, headerDefinition.columns.province);
+    const canton = getTrimmedCellText(row, headerDefinition.columns.canton);
+    const district = getTrimmedCellText(row, headerDefinition.columns.district);
+    const coordinates = getTrimmedCellText(row, headerDefinition.columns.coordinates);
+    const status = getTrimmedCellText(row, headerDefinition.columns.status);
 
     if (
       !route &&

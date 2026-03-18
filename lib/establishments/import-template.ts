@@ -43,23 +43,63 @@ export type EstablishmentImportRowResult =
 const INACTIVE_STATUS = new Set(["inactivo", "inactive", "0", "false", "no"]);
 const ACTIVE_STATUS = new Set(["activo", "active", "1", "true", "si", "yes"]);
 
+function normalizeCoordinateNumber(rawValue: string) {
+  const normalized = rawValue.trim().replace(/\s+/g, "");
+  if (!normalized) return Number.NaN;
+
+  if (normalized.includes(".") && normalized.includes(",")) {
+    return Number(normalized.replace(/,/g, ""));
+  }
+
+  if (normalized.includes(",")) {
+    const commaCount = (normalized.match(/,/g) ?? []).length;
+    if (commaCount === 1) {
+      return Number(normalized.replace(",", "."));
+    }
+  }
+
+  return Number(normalized);
+}
+
+function extractCoordinateTokens(rawValue: string) {
+  return rawValue.match(/-?\d+(?:[.,]\d+)?/g) ?? [];
+}
+
 export function parseCoordinatePair(rawValue: string): ParsedCoordinatePair {
   const value = rawValue.trim();
   if (!value) return { value: null, error: null };
 
-  const pieces = value.split(",");
-  if (pieces.length !== 2) {
-    return {
-      value: null,
-      error: "Las coordenadas deben tener formato 'lat, long'.",
-    };
+  const normalizedValue = value
+    .replace(/[()]/g, " ")
+    .replace(/\b(lat(?:itud)?)\b/gi, " ")
+    .replace(/\b(lng|lon|long|longitud)\b/gi, " ")
+    .replace(/[;|]/g, ",")
+    .replace(/\r?\n/g, ",");
+
+  const directPieces = normalizedValue
+    .split(",")
+    .map((piece) => piece.trim())
+    .filter(Boolean);
+
+  let latRaw = "";
+  let lngRaw = "";
+
+  if (directPieces.length === 2) {
+    [latRaw, lngRaw] = directPieces;
+  } else {
+    const extractedTokens = extractCoordinateTokens(normalizedValue);
+    if (extractedTokens.length !== 2) {
+      return {
+        value: null,
+        error: "Las coordenadas deben tener formato 'lat, long'.",
+      };
+    }
+
+    [latRaw, lngRaw] = extractedTokens;
   }
 
-  const latRaw = pieces[0]?.trim() ?? "";
-  const lngRaw = pieces[1]?.trim() ?? "";
-
-  const lat = Number(latRaw);
-  const lng = Number(lngRaw);
+  const lat = normalizeCoordinateNumber(latRaw);
+  const lng = normalizeCoordinateNumber(lngRaw);
 
   if (!Number.isFinite(lat)) {
     return { value: null, error: "Latitud invalida. Debe ser numerica." };
