@@ -944,7 +944,7 @@ async function getVisitanteRouteSummaryCardData(
     new Set(
       establishmentRows
         .map((row) => row.route_id)
-        .filter((value): value is number => Number.isInteger(value) && value > 0)
+        .filter((value): value is number => value !== null && Number.isInteger(value) && value > 0)
     )
   );
 

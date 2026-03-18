@@ -1,5 +1,4 @@
 import { parsePositiveInt, pdfName, xlsxName } from "@/lib/reports/export-core";
-import { REPORT_DEFINITIONS } from "@/lib/reports/types";
 
 export const COMPANY_EMAIL_REPORT_TYPES = ["completo", "ajustes"] as const;
 
@@ -61,8 +60,7 @@ function attachmentBaseName(request: CompanyEmailReportRequest, index: number): 
 
 export function reportTitleForEmail(type: CompanyEmailReportType): string {
   if (type === "completo") return "Reporte Completo";
-  if (type === "ajustes") return "Ajuste de Inventario";
-  return REPORT_DEFINITIONS[type].title;
+  return "Ajuste de Inventario";
 }
 
 export function parseCompanyReportRequestsInput(
