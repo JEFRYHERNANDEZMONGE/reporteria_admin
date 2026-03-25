@@ -447,7 +447,6 @@ async function getAdminEditorDashboardData(
   }
 
   const activeEstablishments = activeEstablishmentsRes.count ?? 0;
-  const inProgressTasks = taskAssignments.filter((row) => row.task_state === "En proceso").length;
   const pendingTasks = taskAssignments.filter((row) => row.task_state === "Pendiente").length;
   const overdueTasks = taskAssignments.filter((row) => row.task_state === "Atrasada").length;
   const completedTasks = taskAssignments.filter((row) => row.task_state === "Completada").length;
@@ -1720,7 +1719,6 @@ export default async function RoleHomePage({ params, searchParams }: PageProps) 
     </div>
   );
 }
-
 
 
 

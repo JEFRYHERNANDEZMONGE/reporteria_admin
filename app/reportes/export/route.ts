@@ -4,7 +4,6 @@ import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { isReportType, reportsForRole, type ReportType } from "@/lib/reports/types";
 import {
   fetchReportRows,
-  formatDate,
   formatDateTime,
   parseReportFilters,
   pdfName,
