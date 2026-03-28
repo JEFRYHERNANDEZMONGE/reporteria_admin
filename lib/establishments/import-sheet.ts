@@ -56,33 +56,27 @@ function normalizeTemplateHeaderCell(value: string) {
 
 export function findEstablishmentTemplateHeaderRow(sheet: ExcelJS.Worksheet) {
   const headerRow = sheet.getRow(FIXED_TEMPLATE_HEADER_ROW);
+  const expectedHeadersByColumn: Record<number, string> = {
+    [FIXED_TEMPLATE_COLUMNS.route]: "nombre de ruta",
+    [FIXED_TEMPLATE_COLUMNS.name]: "nombre(establecimiento)",
+    [FIXED_TEMPLATE_COLUMNS.format]: "formato",
+    [FIXED_TEMPLATE_COLUMNS.zone]: "zona",
+    [FIXED_TEMPLATE_COLUMNS.direction]: "direccion",
+    [FIXED_TEMPLATE_COLUMNS.province]: "provincia",
+    [FIXED_TEMPLATE_COLUMNS.canton]: "canton",
+    [FIXED_TEMPLATE_COLUMNS.district]: "distrito",
+    [FIXED_TEMPLATE_COLUMNS.coordinates]: "coordenadas",
+    [FIXED_TEMPLATE_COLUMNS.status]: "estado",
+  };
 
-  const expectedHeaders = {
-    route: "nombre de ruta",
-    name: "nombre establecimiento",
-    direction: "direccion",
-    province: "provincia",
-    canton: "canton",
-    district: "distrito",
-    coordinates: "coordenadas",
-    status: "estado",
-  } as const;
+  const hasAllFixedHeaders = Object.entries(expectedHeadersByColumn).every(
+    ([columnNumber, expectedHeader]) => {
+      const value = normalizeTemplateHeaderCell(headerRow.getCell(Number(columnNumber)).text);
+      return value === normalizeTemplateHeaderCell(expectedHeader);
+    },
+  );
 
-  const validations = Object.entries(expectedHeaders).every(([key, expected]) => {
-    const value = normalizeTemplateHeaderCell(
-      headerRow.getCell(FIXED_TEMPLATE_COLUMNS[key as EstablishmentTemplateColumnKey]).text
-    );
-
-    if (key === "name") {
-      return value.includes("nombre") && value.includes("establecimiento");
-    }
-
-    return value.includes(expected);
-  });
-
-  if (!validations) {
-    return null;
-  }
+  if (!hasAllFixedHeaders) return null;
 
   return {
     rowNumber: FIXED_TEMPLATE_HEADER_ROW,
