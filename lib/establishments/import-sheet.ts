@@ -1,42 +1,18 @@
 import type ExcelJS from "exceljs";
 
-const TEMPLATE_HEADER_ALIASES = {
-  routeId: ["id de ruta", "id ruta", "route id", "id"],
-  route: ["nombre de ruta", "ruta asignada", "route name", "ruta", "route"],
-  name: [
-    "nombre del establecimiento",
-    "nombre establecimiento",
-    "establecimiento",
-    "nombre",
-  ],
-  format: ["tipo de formato", "formato", "canal"],
-  zone: ["zona", "region", "sector"],
-  direction: ["direccion exacta", "direccion detallada", "direccion"],
-  province: ["provincia"],
-  canton: ["canton"],
-  district: ["distrito"],
-  coordinates: [
-    "latitud y longitud",
-    "latitud / longitud",
-    "latitud,longitud",
-    "lat,long",
-    "coordenadas",
-    "coordenada",
-  ],
-  status: ["estado", "activo", "estatus"],
-} as const;
-
-export type EstablishmentTemplateColumnKey = Exclude<
-  keyof typeof TEMPLATE_HEADER_ALIASES,
-  "routeId"
->;
+export type EstablishmentTemplateColumnKey =
+  | "route"
+  | "name"
+  | "format"
+  | "zone"
+  | "direction"
+  | "province"
+  | "canton"
+  | "district"
+  | "coordinates"
+  | "status";
 
 export type EstablishmentTemplateColumnMap = Record<EstablishmentTemplateColumnKey, number>;
-
-type TemplateHeaderMatch = {
-  key: keyof typeof TEMPLATE_HEADER_ALIASES;
-  score: number;
-};
 
 export const ESTABLISHMENT_TEMPLATE_COLUMNS = [
   { header: "id", key: "routeId", width: 14 },
@@ -52,7 +28,22 @@ export const ESTABLISHMENT_TEMPLATE_COLUMNS = [
   { header: "estado", key: "status", width: 14 },
 ] as const;
 
-export function normalizeTemplateHeaderCell(value: string) {
+const FIXED_TEMPLATE_COLUMNS: EstablishmentTemplateColumnMap = {
+  route: 2,
+  name: 3,
+  format: 4,
+  zone: 5,
+  direction: 6,
+  province: 7,
+  canton: 8,
+  district: 9,
+  coordinates: 10,
+  status: 11,
+};
+
+const FIXED_TEMPLATE_HEADER_ROW = 3;
+
+function normalizeTemplateHeaderCell(value: string) {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -63,59 +54,38 @@ export function normalizeTemplateHeaderCell(value: string) {
     .trim();
 }
 
-function resolveTemplateHeaderMatch(normalizedValue: string): TemplateHeaderMatch | null {
-  let bestMatch: TemplateHeaderMatch | null = null;
-
-  for (const [key, aliases] of Object.entries(TEMPLATE_HEADER_ALIASES) as Array<
-    [keyof typeof TEMPLATE_HEADER_ALIASES, readonly string[]]
-  >) {
-    for (const alias of aliases) {
-      let score = -1;
-
-      if (normalizedValue === alias) {
-        score = 1000 + alias.length;
-      } else if (normalizedValue.includes(alias)) {
-        score = alias.length;
-      }
-
-      if (score < 0) continue;
-
-      if (!bestMatch || score > bestMatch.score) {
-        bestMatch = { key, score };
-      }
-    }
-  }
-
-  return bestMatch;
-}
-
 export function findEstablishmentTemplateHeaderRow(sheet: ExcelJS.Worksheet) {
-  const requiredKeys = Object.keys(TEMPLATE_HEADER_ALIASES).filter(
-    (key): key is EstablishmentTemplateColumnKey => key !== "routeId"
-  );
+  const headerRow = sheet.getRow(FIXED_TEMPLATE_HEADER_ROW);
 
-  for (let rowNumber = 1; rowNumber <= Math.min(sheet.rowCount, 20); rowNumber += 1) {
-    const row = sheet.getRow(rowNumber);
-    const headerMap = {} as Partial<EstablishmentTemplateColumnMap>;
+  const expectedHeaders = {
+    route: "nombre de ruta",
+    name: "nombre establecimiento",
+    direction: "direccion",
+    province: "provincia",
+    canton: "canton",
+    district: "distrito",
+    coordinates: "coordenadas",
+    status: "estado",
+  } as const;
 
-    for (let cellNumber = 1; cellNumber <= row.cellCount; cellNumber += 1) {
-      const normalizedValue = normalizeTemplateHeaderCell(row.getCell(cellNumber).text);
-      if (!normalizedValue) continue;
+  const validations = Object.entries(expectedHeaders).every(([key, expected]) => {
+    const value = normalizeTemplateHeaderCell(
+      headerRow.getCell(FIXED_TEMPLATE_COLUMNS[key as EstablishmentTemplateColumnKey]).text
+    );
 
-      const match = resolveTemplateHeaderMatch(normalizedValue);
-      if (!match || match.key === "routeId") {
-        continue;
-      }
-
-      if (!headerMap[match.key]) {
-        headerMap[match.key] = cellNumber;
-      }
+    if (key === "name") {
+      return value.includes("nombre") && value.includes("establecimiento");
     }
 
-    if (requiredKeys.every((key) => headerMap[key])) {
-      return { rowNumber, columns: headerMap as EstablishmentTemplateColumnMap };
-    }
+    return value.includes(expected);
+  });
+
+  if (!validations) {
+    return null;
   }
 
-  return null;
+  return {
+    rowNumber: FIXED_TEMPLATE_HEADER_ROW,
+    columns: FIXED_TEMPLATE_COLUMNS,
+  };
 }
