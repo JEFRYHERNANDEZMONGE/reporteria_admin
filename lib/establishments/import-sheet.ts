@@ -55,32 +55,63 @@ function normalizeTemplateHeaderCell(value: string) {
 }
 
 export function findEstablishmentTemplateHeaderRow(sheet: ExcelJS.Worksheet) {
-  const headerRow = sheet.getRow(FIXED_TEMPLATE_HEADER_ROW);
+  // Buscar en las primeras 10 filas para encontrar los encabezados.
+  for (let rowNum = 1; rowNum <= 10; rowNum += 1) {
+    const row = sheet.getRow(rowNum);
 
-  const expectedHeaders = {
-    route: "nombre de ruta",
-    name: "nombre establecimiento",
-    direction: "direccion",
-    province: "provincia",
-    canton: "canton",
-    district: "distrito",
-    coordinates: "coordenadas",
-    status: "estado",
-  } as const;
+    const columns: Partial<EstablishmentTemplateColumnMap> = {};
+    let foundRoute = false;
+    let foundName = false;
 
-  const validations = Object.entries(expectedHeaders).every(([key, expected]) => {
-    const value = normalizeTemplateHeaderCell(
-      headerRow.getCell(FIXED_TEMPLATE_COLUMNS[key as EstablishmentTemplateColumnKey]).text
-    );
+    row.eachCell((cell, colNumber) => {
+      const text = normalizeTemplateHeaderCell(cell.text);
 
-    if (key === "name") {
-      return value.includes("nombre") && value.includes("establecimiento");
+      if (!text) return;
+
+      if ((text.includes("nombre") && text.includes("ruta")) || (text.includes("ruta") && !text.includes("#") && !text.includes("numero") && !text.includes("id"))) {
+        columns.route = colNumber;
+        foundRoute = true;
+      } else if (text.includes("nombre") && text.includes("establecimiento")) {
+        columns.name = colNumber;
+        foundName = true;
+      } else if (text === "establecimiento" || text === "nombre" || text === "cliente") {
+        if (!foundName) {
+          columns.name = colNumber;
+          foundName = true;
+        }
+      } else if (text.includes("formato")) {
+        columns.format = colNumber;
+      } else if (text.includes("zona")) {
+        columns.zone = colNumber;
+      } else if (text.includes("direccion") || text.includes("ubicacion")) {
+        columns.direction = colNumber;
+      } else if (text.includes("provincia")) {
+        columns.province = colNumber;
+      } else if (text.includes("canton")) {
+        columns.canton = colNumber;
+      } else if (text.includes("distrito")) {
+        columns.district = colNumber;
+      } else if (text.includes("coordenada") || text.includes("latitud")) {
+        columns.coordinates = colNumber;
+      } else if (text.includes("estado") || text.includes("estatus")) {
+        columns.status = colNumber;
+      }
+    });
+
+    if (foundRoute && foundName) {
+      return {
+        rowNumber: rowNum,
+        columns: {
+          ...FIXED_TEMPLATE_COLUMNS,
+          ...columns,
+        } as EstablishmentTemplateColumnMap,
+      };
     }
+  }
 
-    return value.includes(expected);
-  });
-
-  if (!validations) {
+  // Fallback a los valores viejos si no encontró nada que se parezca.
+  const fallbackHeaderRow = sheet.getRow(FIXED_TEMPLATE_HEADER_ROW);
+  if (!fallbackHeaderRow.hasValues) {
     return null;
   }
 
