@@ -3,7 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
+import {
+  buildCleanAuthUrl,
+  getRecoveryErrorMessage,
+  hasRecoveryAuthParams,
+} from "@/lib/auth/recovery-flow";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
+const EXPIRED_LINK_ERROR =
+  "El enlace ha expirado o ya fue usado. Solicita uno nuevo.";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -18,13 +27,96 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        router.replace("/login?error=token-expired");
-      } else {
-        setHasSession(true);
-      }
+    let isMounted = true;
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+    const currentUrl = new URL(window.location.href);
+    const cleanUrl = buildCleanAuthUrl(currentUrl);
+    const urlError = getRecoveryErrorMessage({
+      search: currentUrl.search,
+      hash: currentUrl.hash,
     });
+    const expectsRecoverySession = hasRecoveryAuthParams({
+      search: currentUrl.search,
+      hash: currentUrl.hash,
+    });
+
+    function replaceUrl() {
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+
+    function markReady() {
+      if (!isMounted) return;
+      replaceUrl();
+      setError(null);
+      setHasSession(true);
+    }
+
+    function markInvalid(message: string) {
+      if (!isMounted) return;
+      replaceUrl();
+      setError(message);
+      setHasSession(false);
+    }
+
+    if (urlError) {
+      markInvalid(urlError);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "PASSWORD_RECOVERY" || session) {
+          if (fallbackTimer) {
+            clearTimeout(fallbackTimer);
+          }
+          markReady();
+        }
+      }
+    );
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error: sessionError }) => {
+        if (!isMounted) return;
+
+        if (sessionError) {
+          markInvalid(EXPIRED_LINK_ERROR);
+          return;
+        }
+
+        if (data.session) {
+          markReady();
+          return;
+        }
+
+        if (!expectsRecoverySession) {
+          markInvalid(EXPIRED_LINK_ERROR);
+          return;
+        }
+
+        fallbackTimer = setTimeout(async () => {
+          const { data: retryData } = await supabase.auth.getSession();
+          if (retryData.session) {
+            markReady();
+            return;
+          }
+
+          markInvalid(EXPIRED_LINK_ERROR);
+        }, 1500);
+      })
+      .catch(() => {
+        markInvalid(EXPIRED_LINK_ERROR);
+      });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+      }
+    };
   }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -107,6 +199,27 @@ export default function ResetPasswordPage() {
             <p className="text-[13px] text-[var(--muted)]">
               Redirigiendo al inicio de sesión...
             </p>
+          </div>
+        ) : hasSession === false ? (
+          <div className="mt-6 flex flex-col items-center gap-3 text-center">
+            <p className="text-[14px] font-semibold text-[#9B1C1C]">
+              No se pudo validar el enlace
+            </p>
+            <p className="text-[13px] text-[var(--muted)]">
+              {error ?? EXPIRED_LINK_ERROR}
+            </p>
+            <Link
+              href="/login/olvide-contrasena"
+              className="mt-2 text-[13px] font-medium text-foreground underline underline-offset-4"
+            >
+              Solicitar un nuevo enlace
+            </Link>
+            <Link
+              href="/login"
+              className="text-[13px] text-[var(--muted)] hover:text-foreground"
+            >
+              Volver al inicio de sesión
+            </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
@@ -194,7 +307,7 @@ export default function ResetPasswordPage() {
           </form>
         )}
 
-        {error ? (
+        {error && hasSession !== false ? (
           <p className="mt-4 text-center text-[13px] font-medium text-[#9B1C1C]">
             {error}
           </p>

@@ -1,5 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
+import {
+  buildRecoveryRedirectTo,
+  resolvePublicSiteUrl,
+} from "@/lib/http/request-origin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type ForgotPasswordState = {
@@ -18,10 +23,14 @@ export async function forgotPasswordAction(
   }
 
   const supabase = await createSupabaseServerClient();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const requestHeaders = await headers();
+  const siteUrl = resolvePublicSiteUrl(
+    process.env.NEXT_PUBLIC_SITE_URL,
+    requestHeaders
+  );
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteUrl}/auth/callback?type=recovery`,
+    redirectTo: buildRecoveryRedirectTo(siteUrl),
   });
 
   if (error) {
