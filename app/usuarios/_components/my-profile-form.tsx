@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { updateMyProfileAction, type MyProfileFormState } from "@/app/usuarios/actions";
 
 type MyProfileFormProps = {
@@ -31,6 +32,7 @@ export function MyProfileForm({ name, role, companyName }: MyProfileFormProps) {
     updateMyProfileAction,
     INITIAL_STATE
   );
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);

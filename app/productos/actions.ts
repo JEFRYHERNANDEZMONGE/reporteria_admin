@@ -99,7 +99,7 @@ export async function createProductAction(
   });
 
   if (error) {
-    return { error: "No se pudo crear el producto. Verifica SKU/empresa e intenta nuevamente." };
+    return { error: "No se pudo crear el producto. Verifica SKU/empresa e intenta nuevamente. (PROD-CRE-01)" };
   }
 
   revalidatePath("/productos");
@@ -155,7 +155,7 @@ export async function updateProductAction(
 
   if (error) {
     return {
-      error: "No se pudo actualizar el producto. Verifica SKU/empresa e intenta nuevamente.",
+      error: "No se pudo actualizar el producto. Verifica SKU/empresa e intenta nuevamente. (PROD-UPD-01)",
     };
   }
 
@@ -194,7 +194,7 @@ export async function deleteProductAction(
 
   if (error) {
     return {
-      error: "No se pudo eliminar el producto. Verifica dependencias relacionadas.",
+      error: "No se pudo eliminar el producto. Verifica dependencias relacionadas. (PROD-DEL-01)",
       success: false,
     };
   }

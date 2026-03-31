@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import type { TaskFormState } from "@/app/tareas/actions";
 import { SearchableCombobox } from "@/app/_components/searchable-combobox";
 
@@ -48,6 +49,7 @@ export function TaskForm({
   action,
 }: TaskFormProps) {
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
   const [selectedIds, setSelectedIds] = useState<number[]>(selectedUserIds);
 
   const availableUsers = useMemo(() => {

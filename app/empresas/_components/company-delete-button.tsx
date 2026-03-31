@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   deleteCompanyAction,
   type DeleteCompanyState,
@@ -28,6 +29,7 @@ export function CompanyDeleteButton({
     deleteCompanyAction,
     INITIAL_STATE
   );
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
 
   return (
     <>

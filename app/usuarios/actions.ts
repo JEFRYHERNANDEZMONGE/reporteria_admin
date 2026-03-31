@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { logAuditAction } from "@/lib/audit/log";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { isAppRole } from "@/lib/auth/roles";
+import { createClient } from "@supabase/supabase-js";
 import { getSupabaseEnv, getSupabaseServiceRoleKey } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -132,7 +133,7 @@ async function createAuthUserWithAdminAPI(
   if (!response.ok) {
     return {
       authUserId: null,
-      error: "No se pudo crear el usuario de autenticacion.",
+      error: "No se pudo crear el usuario de autenticacion. (USR-CRE-01)",
     };
   }
 
@@ -147,7 +148,7 @@ async function createAuthUserWithAdminAPI(
   if (!authUserId) {
     return {
       authUserId: null,
-      error: "No se recibio el id del usuario de autenticacion.",
+      error: "No se recibio el id del usuario de autenticacion. (USR-CRE-02)",
     };
   }
 
@@ -221,7 +222,7 @@ export async function createUserAction(
   if (error) {
     return {
       error:
-        "No se pudo crear el perfil del usuario. Verifica correo y que el usuario no exista.",
+        "No se pudo crear el perfil del usuario. Verifica correo y que el usuario no exista. (USR-CRE-03)",
     };
   }
 
@@ -313,7 +314,7 @@ export async function updateUserAction(
     .eq("user_id", userId);
 
   if (error) {
-    return { error: "No se pudo actualizar el usuario. Verifica los datos ingresados." };
+    return { error: "No se pudo actualizar el usuario. Verifica los datos ingresados. (USR-UPD-01)" };
   }
 
   revalidatePath("/usuarios");
@@ -369,7 +370,7 @@ export async function toggleUserStatusAction(
     .eq("user_id", userId);
 
   if (error) {
-    return { error: "No se pudo cambiar el estado del usuario.", success: false };
+    return { error: "No se pudo cambiar el estado del usuario. (USR-STA-01)", success: false };
   }
 
   revalidatePath("/usuarios");
@@ -415,9 +416,15 @@ export async function deleteUserAction(
 
   if (error) {
     return {
-      error: "No se pudo eliminar el usuario. Verifica dependencias relacionadas.",
+      error: "No se pudo eliminar el usuario. Verifica dependencias relacionadas. (USR-DEL-01)",
       success: false,
     };
+  }
+
+  if (targetUser.auth_user_id) {
+    const { url } = getSupabaseEnv();
+    const adminClient = createClient(url, getSupabaseServiceRoleKey());
+    await adminClient.auth.admin.deleteUser(targetUser.auth_user_id);
   }
 
   revalidatePath("/usuarios");
@@ -492,7 +499,7 @@ export async function updateMyProfileAction(
     .eq("auth_user_id", authUser.id);
 
   if (updateProfileError) {
-    return { error: "No se pudo actualizar tu nombre.", success: null };
+    return { error: "No se pudo actualizar tu nombre. (USR-PRF-01)", success: null };
   }
 
   if (wantsPasswordChange) {
@@ -502,7 +509,7 @@ export async function updateMyProfileAction(
 
     if (updatePasswordError) {
       return {
-        error: "No se pudo actualizar la contrasena. Intenta nuevamente.",
+        error: "No se pudo actualizar la contrasena. Intenta nuevamente. (USR-PRF-02)",
         success: null,
       };
     }

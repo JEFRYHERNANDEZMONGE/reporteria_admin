@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { deleteRouteAction, type DeleteRouteState } from "@/app/rutas/actions";
 
 type RouteDeleteButtonProps = {
@@ -16,6 +17,7 @@ const INITIAL_STATE: DeleteRouteState = {
 export function RouteDeleteButton({ routeId, plain = false }: RouteDeleteButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [state, formAction, isPending] = useActionState(deleteRouteAction, INITIAL_STATE);
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
 
   return (
     <>

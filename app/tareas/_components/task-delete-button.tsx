@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { deleteTaskAction, type DeleteTaskState } from "@/app/tareas/actions";
 
 type TaskDeleteButtonProps = {
@@ -19,6 +20,7 @@ export function TaskDeleteButton({ taskId, taskTitle }: TaskDeleteButtonProps) {
     deleteTaskAction,
     INITIAL_STATE
   );
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
 
   return (
     <>

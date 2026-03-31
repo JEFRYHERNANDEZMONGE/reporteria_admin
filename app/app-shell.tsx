@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
+import { Toaster } from "sonner";
 import { SidebarNav } from "@/app/home/_components/sidebar-nav";
 import type { AppRole } from "@/lib/auth/roles";
 
@@ -31,15 +32,23 @@ export function AppShell({ children, role }: AppShellProps) {
     pathname.startsWith("/auth/");
 
   if (isAuthRoute) {
-    return <>{children}</>;
+    return (
+      <>
+        <Toaster position="top-right" duration={8000} richColors closeButton />
+        {children}
+      </>
+    );
   }
 
   return (
-    <main className="min-h-screen bg-background lg:flex lg:h-screen lg:items-start lg:overflow-hidden">
-      {activeRole ? <SidebarNav role={activeRole} /> : null}
-      <section className="w-full p-4 pt-5 sm:p-6 lg:h-screen lg:overflow-y-auto lg:p-6">
-        {children}
-      </section>
-    </main>
+    <>
+      <Toaster position="top-right" duration={8000} richColors closeButton />
+      <main className="min-h-screen bg-background lg:flex lg:h-screen lg:items-start lg:overflow-hidden">
+        {activeRole ? <SidebarNav role={activeRole} /> : null}
+        <section className="w-full p-4 pt-5 sm:p-6 lg:h-screen lg:overflow-y-auto lg:p-6">
+          {children}
+        </section>
+      </main>
+    </>
   );
 }

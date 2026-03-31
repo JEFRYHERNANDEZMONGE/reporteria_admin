@@ -73,7 +73,7 @@ export async function createCompanyAction(
   });
 
   if (error) {
-    return { error: "No se pudo crear la empresa. Intenta nuevamente." };
+    return { error: "No se pudo crear la empresa. Intenta nuevamente. (EMP-CRE-01)" };
   }
 
   revalidatePath("/empresas");
@@ -131,7 +131,7 @@ export async function deleteCompanyAction(
   if (error) {
     return {
       error:
-        "No se pudo eliminar la empresa. Verifica si tiene registros relacionados.",
+        "No se pudo eliminar la empresa. Verifica si tiene registros relacionados. (EMP-DEL-01)",
       success: false,
     };
   }
@@ -180,7 +180,7 @@ export async function updateCompanyAction(
     .eq("company_id", companyId);
 
   if (error) {
-    return { error: "No se pudo actualizar la empresa. Intenta nuevamente." };
+    return { error: "No se pudo actualizar la empresa. Intenta nuevamente. (EMP-UPD-01)" };
   }
 
   revalidatePath("/empresas");

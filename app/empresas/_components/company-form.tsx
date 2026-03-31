@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { CompanyFormState } from "@/app/empresas/actions";
 
 type Company = {
@@ -25,6 +26,7 @@ const INITIAL_STATE: CompanyFormState = { error: null };
 
 export function CompanyForm({ mode, company, action }: CompanyFormProps) {
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
   const [reportEmails, setReportEmails] = useState<string[]>(company?.report_emails ?? []);
   const [emailDraft, setEmailDraft] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);

@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { AdaptiveSelect } from "@/app/_components/adaptive-select";
 import type { RouteFormState } from "@/app/rutas/actions";
 import { SearchableCombobox } from "@/app/_components/searchable-combobox";
@@ -64,6 +65,7 @@ export function RouteForm({
   action,
 }: RouteFormProps) {
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
   const [selectedEstablishments, setSelectedEstablishments] = useState<
     EstablishmentOption[]
   >(initialAssignedEstablishments);

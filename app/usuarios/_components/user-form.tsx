@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { AdaptiveSelect } from "@/app/_components/adaptive-select";
 import type { UserFormState } from "@/app/usuarios/actions";
 import { APP_ROLES } from "@/lib/auth/roles";
@@ -41,6 +42,7 @@ export function UserForm({
   action,
 }: UserFormProps) {
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
   const [selectedRole, setSelectedRole] = useState<UserProfile["role"]>(
     userProfile?.role ?? "visitante"
   );

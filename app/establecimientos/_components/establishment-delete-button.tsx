@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   deleteEstablishmentAction,
   type DeleteEstablishmentState,
@@ -25,6 +26,7 @@ export function EstablishmentDeleteButton({
     deleteEstablishmentAction,
     INITIAL_STATE
   );
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
 
   return (
     <>

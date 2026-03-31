@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useActionState, useState } from "react";
+import { Suspense, useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -28,6 +29,7 @@ function LoginContent() {
   const displayError =
     state.error ??
     (urlError ? (OAUTH_ERRORS[urlError] ?? "Error al iniciar sesion con Google.") : null);
+  useEffect(() => { if (displayError) toast.error(displayError); }, [displayError]);
 
   async function handleGoogleSignIn() {
     setIsGooglePending(true);

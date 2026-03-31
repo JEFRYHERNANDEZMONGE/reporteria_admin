@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { toast } from "sonner";
 import { AdaptiveSelect } from "@/app/_components/adaptive-select";
 import type { ProductFormState } from "@/app/productos/actions";
 
@@ -33,6 +34,7 @@ const INITIAL_STATE: ProductFormState = { error: null };
 
 export function ProductForm({ mode, product, companies, action }: ProductFormProps) {
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
 
   return (
     <form action={formAction} className="rounded-[12px] border border-[var(--border)] bg-white p-4">

@@ -35,7 +35,7 @@ export async function forgotPasswordAction(
 
   if (error) {
     return {
-      error: "No se pudo enviar el correo. Intenta nuevamente.",
+      error: "No se pudo enviar el correo. Intenta nuevamente. (AUTH-PWD-01)",
       success: false,
     };
   }

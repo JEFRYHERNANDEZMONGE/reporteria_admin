@@ -88,7 +88,7 @@ async function fetchAttachmentBuffer(params: {
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || "No se pudo generar uno de los adjuntos.");
+    throw new Error(message || "No se pudo generar uno de los adjuntos. (REP-ADJ-01)");
   }
 
   const contentType =
@@ -248,7 +248,7 @@ export async function sendCompanyReportsAction(
     };
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : "No se pudieron enviar los reportes.",
+      error: error instanceof Error ? error.message : "No se pudieron enviar los reportes. (REP-ENV-01)",
       success: null,
     };
   }

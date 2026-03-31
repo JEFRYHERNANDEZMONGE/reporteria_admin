@@ -134,7 +134,7 @@ export async function createTaskAction(
     .single();
 
   if (error) {
-    return { error: "No se pudo crear la tarea." };
+    return { error: "No se pudo crear la tarea. (TAR-CRE-01)" };
   }
 
   if (insertedTask && assignedUserIds.length > 0) {
@@ -147,7 +147,7 @@ export async function createTaskAction(
     );
 
     if (assignmentError) {
-      return { error: "Se creo la tarea, pero no se pudieron guardar asignaciones." };
+      return { error: "Se creo la tarea, pero no se pudieron guardar asignaciones. (TAR-CRE-02)" };
     }
   }
 
@@ -205,7 +205,7 @@ export async function updateTaskAction(
     .eq("task_id", taskId);
 
   if (error) {
-    return { error: "No se pudo actualizar la tarea." };
+    return { error: "No se pudo actualizar la tarea. (TAR-UPD-01)" };
   }
 
   const { error: assignmentError } = await syncTaskAssignments(
@@ -215,7 +215,7 @@ export async function updateTaskAction(
   );
 
   if (assignmentError) {
-    return { error: "Se actualizo la tarea, pero no sus asignaciones." };
+    return { error: "Se actualizo la tarea, pero no sus asignaciones. (TAR-UPD-02)" };
   }
 
   revalidatePath("/tareas");
@@ -252,7 +252,7 @@ export async function deleteTaskAction(
   const { error } = await supabase.from("task").delete().eq("task_id", taskId);
   if (error) {
     return {
-      error: "No se pudo eliminar la tarea. Verifica dependencias relacionadas.",
+      error: "No se pudo eliminar la tarea. Verifica dependencias relacionadas. (TAR-DEL-01)",
       success: false,
     };
   }

@@ -153,7 +153,7 @@ async function syncEstablishmentProducts(
     .eq("establishment_id", establishmentId);
 
   if (currentError) {
-    return { error: "No se pudieron consultar los productos del establecimiento." };
+    return { error: "No se pudieron consultar los productos del establecimiento. (EST-P01)" };
   }
 
   const currentIds = new Set((currentRows ?? []).map((row) => row.product_id));
@@ -170,7 +170,7 @@ async function syncEstablishmentProducts(
       .in("product_id", toDelete);
 
     if (error) {
-      return { error: "No se pudieron remover productos del establecimiento." };
+      return { error: "No se pudieron remover productos del establecimiento. (EST-P02)" };
     }
   }
 
@@ -183,7 +183,7 @@ async function syncEstablishmentProducts(
     );
 
     if (error) {
-      return { error: "No se pudieron asignar productos al establecimiento." };
+      return { error: "No se pudieron asignar productos al establecimiento. (EST-P03)" };
     }
   }
 
@@ -279,7 +279,7 @@ async function resolveImportedRouteIds(
   if (existingRoutesError) {
     return {
       ok: false as const,
-      error: "No se pudieron consultar las rutas del archivo.",
+      error: "No se pudieron consultar las rutas del archivo. (IMP-RUT-01)",
     };
   }
 
@@ -311,7 +311,7 @@ async function resolveImportedRouteIds(
   if (createdRoutesError) {
     return {
       ok: false as const,
-      error: "No se pudieron crear las rutas faltantes del archivo.",
+      error: "No se pudieron crear las rutas faltantes del archivo. (IMP-RUT-02)",
     };
   }
 
@@ -323,7 +323,7 @@ async function resolveImportedRouteIds(
   if (unresolvedRouteNames.length > 0) {
     return {
       ok: false as const,
-      error: "No se pudieron resolver todas las rutas del archivo.",
+      error: "No se pudieron resolver todas las rutas del archivo. (IMP-RUT-03)",
     };
   }
 
@@ -346,7 +346,7 @@ async function fetchExistingEstablishmentsForImport(
   if (error) {
     return {
       ok: false as const,
-      error: "No se pudieron consultar los establecimientos existentes para validar duplicados.",
+      error: "No se pudieron consultar los establecimientos existentes para validar duplicados. (IMP-EST-01)",
     };
   }
 
@@ -554,8 +554,8 @@ export async function importEstablishmentsTemplateAction(
     return {
       error:
         errors.length > 0
-          ? "No se importo ningun establecimiento por errores de validacion."
-          : "La plantilla no contiene filas con datos para importar.",
+          ? "No se importo ningun establecimiento por errores de validacion. (IMP-VAL-01)"
+          : "La plantilla no contiene filas con datos para importar. (IMP-VAL-02)",
       success: null,
       details: summarizeImportErrors(errors),
     };
@@ -641,7 +641,7 @@ export async function importEstablishmentsTemplateAction(
 
   if (finalRowsToInsert.length === 0) {
     return {
-      error: "No se importo ningun establecimiento porque todas las filas validas estaban repetidas o fallaron.",
+      error: "No se importo ningun establecimiento porque todas las filas validas estaban repetidas o fallaron. (IMP-VAL-03)",
       success: null,
       details: summarizeImportErrors(errors),
     };
@@ -652,7 +652,7 @@ export async function importEstablishmentsTemplateAction(
 
   if (insertResult.importedCount === 0) {
     return {
-      error: "No se pudo completar la importacion. Revisa el detalle de filas omitidas.",
+      error: "No se pudo completar la importacion. Revisa el detalle de filas omitidas. (IMP-ERR-01)",
       success: null,
       details: summarizeImportErrors(errors),
     };
@@ -745,7 +745,7 @@ export async function createEstablishmentAction(
     .single();
 
   if (error || !created) {
-    return { error: "No se pudo crear el establecimiento. Intenta nuevamente." };
+    return { error: "No se pudo crear el establecimiento. Intenta nuevamente. (EST-CRE-01)" };
   }
 
   const syncResult = await syncEstablishmentProducts(supabase, created.establishment_id, productIds);
@@ -833,7 +833,7 @@ export async function updateEstablishmentAction(
     .eq("establishment_id", establishmentId);
 
   if (error) {
-    return { error: "No se pudo actualizar el establecimiento. Intenta nuevamente." };
+    return { error: "No se pudo actualizar el establecimiento. Intenta nuevamente. (EST-UPD-01)" };
   }
 
   const syncResult = await syncEstablishmentProducts(supabase, establishmentId, productIds);
@@ -880,7 +880,7 @@ export async function deleteEstablishmentAction(
 
   if (linkError) {
     return {
-      error: "No se pudieron remover relaciones de productos del establecimiento.",
+      error: "No se pudieron remover relaciones de productos del establecimiento. (EST-DEL-01)",
       success: false,
     };
   }
@@ -893,7 +893,7 @@ export async function deleteEstablishmentAction(
   if (error) {
     return {
       error:
-        "No se pudo eliminar el establecimiento. Verifica si tiene registros relacionados.",
+        "No se pudo eliminar el establecimiento. Verifica si tiene registros relacionados. (EST-DEL-02)",
       success: false,
     };
   }

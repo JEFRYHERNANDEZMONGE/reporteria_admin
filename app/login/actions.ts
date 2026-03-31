@@ -43,7 +43,7 @@ export async function loginAction(
   } catch {
     await supabase.auth.signOut();
     return {
-      error: "No fue posible validar tu rol en este momento. Intenta nuevamente.",
+      error: "No fue posible validar tu rol en este momento. Intenta nuevamente. (AUTH-01)",
       email,
     };
   }
@@ -51,7 +51,7 @@ export async function loginAction(
   if (!profile) {
     await supabase.auth.signOut();
     return {
-      error: "No se encontro un rol para este usuario. Contacta al administrador.",
+      error: "No se encontro un rol para este usuario. Contacta al administrador. (AUTH-02)",
       email,
     };
   }

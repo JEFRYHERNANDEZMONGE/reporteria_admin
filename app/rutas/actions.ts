@@ -125,7 +125,7 @@ async function assignEstablishmentsToRoute(
     .is("route_id", null);
 
   if (error) {
-    return { error: "No se pudieron asignar establecimientos a la ruta." };
+    return { error: "No se pudieron asignar establecimientos a la ruta. (RUT-ASG-01)" };
   }
 
   return { error: null as string | null };
@@ -145,7 +145,7 @@ async function unassignEstablishmentsFromRoute(
     .in("establishment_id", establishmentIds);
 
   if (error) {
-    return { error: "No se pudieron remover establecimientos de la ruta." };
+    return { error: "No se pudieron remover establecimientos de la ruta. (RUT-REM-01)" };
   }
 
   return { error: null as string | null };
@@ -195,7 +195,7 @@ export async function createRouteAction(
     .single();
 
   if (error || !createdRoute) {
-    return { error: "No se pudo crear la ruta. Verifica los datos e intenta nuevamente." };
+    return { error: "No se pudo crear la ruta. Verifica los datos e intenta nuevamente. (RUT-CRE-01)" };
   }
 
   const assignResult = await assignEstablishmentsToRoute(
@@ -243,7 +243,7 @@ export async function updateRouteAction(
 
   const currentEstablishmentIds = await getRouteEstablishments(supabase, routeId);
   if (!currentEstablishmentIds) {
-    return { error: "No se pudieron consultar los establecimientos de la ruta." };
+    return { error: "No se pudieron consultar los establecimientos de la ruta. (RUT-CON-01)" };
   }
 
   const selectedSet = new Set(establishmentIds);
@@ -274,7 +274,7 @@ export async function updateRouteAction(
     .eq("route_id", routeId);
 
   if (error) {
-    return { error: "No se pudo actualizar la ruta. Intenta nuevamente." };
+    return { error: "No se pudo actualizar la ruta. Intenta nuevamente. (RUT-UPD-01)" };
   }
 
   const unassignResult = await unassignEstablishmentsFromRoute(
@@ -330,7 +330,7 @@ export async function deleteRouteAction(
   const { error } = await supabase.from("route").delete().eq("route_id", routeId);
   if (error) {
     return {
-      error: "No se pudo eliminar la ruta. Verifica dependencias relacionadas.",
+      error: "No se pudo eliminar la ruta. Verifica dependencias relacionadas. (RUT-DEL-01)",
       success: false,
     };
   }

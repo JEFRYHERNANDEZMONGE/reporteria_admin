@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { deleteUserAction, type DeleteUserState } from "@/app/usuarios/actions";
 
 type UserDeleteButtonProps = {
@@ -24,6 +25,7 @@ export function UserDeleteButton({
     deleteUserAction,
     INITIAL_STATE
   );
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
 
   return (
     <>

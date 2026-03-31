@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { deleteProductAction, type DeleteProductState } from "@/app/productos/actions";
 
 type ProductDeleteButtonProps = {
@@ -16,6 +17,7 @@ const INITIAL_STATE: DeleteProductState = {
 export function ProductDeleteButton({ productId, plain = false }: ProductDeleteButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [state, formAction, isPending] = useActionState(deleteProductAction, INITIAL_STATE);
+  useEffect(() => { if (state.error) toast.error(state.error); }, [state]);
 
   return (
     <>
