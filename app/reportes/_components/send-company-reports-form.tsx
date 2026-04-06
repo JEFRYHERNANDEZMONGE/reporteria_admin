@@ -24,7 +24,7 @@ type ProductOption = Option & {
 
 type DraftRequest = {
   id: string;
-  type: "completo" | "ajustes";
+  type: "completo" | "ajustes" | "presentacion";
   from: string;
   to: string;
   routeId: string;
@@ -49,6 +49,7 @@ const INITIAL_STATE: SendCompanyReportsState = {
 const REPORT_TYPE_OPTIONS = [
   { value: "completo", label: "Reporte Completo" },
   { value: "ajustes", label: "Ajuste de Inventario" },
+  { value: "presentacion", label: "Reporte Presentacion" },
 ] as const;
 
 function createDraftRequest(index: number): DraftRequest {
@@ -187,7 +188,7 @@ export function SendCompanyReportsForm({
           <h2 className="text-[16px] font-semibold text-foreground">Enviar reportes por correo</h2>
           <p className="mt-1 max-w-3xl text-[13px] text-[var(--muted)]">
             Prepara un envio puntual para una empresa. Reporte Completo se adjunta en Excel y
-            Ajuste de Inventario se adjunta en PDF.
+            Ajuste de Inventario o Reporte Presentacion se adjuntan en PDF.
           </p>
         </div>
 

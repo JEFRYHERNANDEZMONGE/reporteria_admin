@@ -1,6 +1,6 @@
 import { parsePositiveInt, pdfName, xlsxName } from "@/lib/reports/export-core";
 
-export const COMPANY_EMAIL_REPORT_TYPES = ["completo", "ajustes"] as const;
+export const COMPANY_EMAIL_REPORT_TYPES = ["completo", "ajustes", "presentacion"] as const;
 
 export type CompanyEmailReportType = (typeof COMPANY_EMAIL_REPORT_TYPES)[number];
 
@@ -60,6 +60,7 @@ function attachmentBaseName(request: CompanyEmailReportRequest, index: number): 
 
 export function reportTitleForEmail(type: CompanyEmailReportType): string {
   if (type === "completo") return "Reporte Completo";
+  if (type === "presentacion") return "Reporte Presentacion";
   return "Ajuste de Inventario";
 }
 
@@ -199,6 +200,10 @@ export function buildCompanyReportAttachmentName(
   const baseName = attachmentBaseName(request, index);
   if (request.type === "completo") {
     return xlsxName("completo").replace("reporte_completo", baseName);
+  }
+
+  if (request.type === "presentacion") {
+    return pdfName("presentacion").replace("reporte_presentacion", baseName);
   }
 
   return pdfName("ajustes").replace("reporte_ajustes", baseName);

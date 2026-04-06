@@ -11,6 +11,8 @@ export type PresentationPhotoCard = {
   companyName: string | null;
   recordId: number;
   evidenceId: number;
+  recordSequence: number;
+  showRecordSummary: boolean;
   photoUrl: string;
   timeDate: string;
   comments: string | null;
@@ -74,20 +76,11 @@ function formatDateRange(from: string | null, to: string | null) {
   return "Sin rango definido";
 }
 
-function limitText(value: string | null, maxLength: number) {
+function limitText(value: string | null, maxLength: number, emptyFallback = "Sin comentarios") {
   const trimmed = (value ?? "").trim();
-  if (!trimmed) return "Sin comentarios";
+  if (!trimmed) return emptyFallback;
   if (trimmed.length <= maxLength) return trimmed;
   return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`;
-}
-
-export function summarizePresentationPageEstablishments(
-  page: Pick<PresentationPage, "establishments">,
-  maxLength = 120
-) {
-  const raw = page.establishments.map((item) => item.establishmentName).join("  |  ");
-  if (raw.length <= maxLength) return raw;
-  return `${raw.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
 }
 
 function collectPdf(doc: PDFKit.PDFDocument): Promise<Buffer> {
@@ -243,8 +236,9 @@ async function drawPresentationCard(params: {
 }) {
   const { doc, card, x, y, width, height } = params;
   const padding = 10;
-  const imageAreaY = y + 82;
-  const imageHeight = Math.max(72, height - 120);
+  const summaryHeight = card.showRecordSummary ? 42 : 18;
+  const imageAreaY = y + 56 + summaryHeight;
+  const imageHeight = Math.max(72, height - (imageAreaY - y) - 34);
   const prepared = await preparePresentationImage(card);
 
   doc.roundedRect(x, y, width, height, 12).fillAndStroke("#FFFFFF", "#D7DFDA");
@@ -257,32 +251,41 @@ async function drawPresentationCard(params: {
     lineBreak: false,
   });
 
-  drawCardText(doc, "Registro", x + padding, y + 36, width * 0.24, {
+  drawCardText(doc, `Registro ${card.recordSequence}`, x + padding, y + 36, width * 0.3, {
     font: "Helvetica-Bold",
     size: 9,
     color: "#102A43",
     lineBreak: false,
   });
-  drawCardText(doc, formatDateTime(card.timeDate), x + width * 0.26, y + 36, width * 0.64 - padding, {
+  drawCardText(doc, formatDateTime(card.timeDate), x + width * 0.32, y + 36, width * 0.58 - padding, {
     size: 9,
     color: "#486581",
     align: "right",
     lineBreak: false,
   });
 
-  drawCardText(
-    doc,
-    `Fisico: ${formatInventory(card.realInventory)}   Sistema: ${formatInventory(card.systemInventory)}`,
-    x + padding,
-    y + 52,
-    width - padding * 2,
-    { size: 8.5, color: "#486581", lineBreak: false }
-  );
-  drawCardText(doc, limitText(card.comments, 72), x + padding, y + 66, width - padding * 2, {
-    size: 8,
-    color: "#334E68",
-    lineBreak: false,
-  });
+  if (card.showRecordSummary) {
+    drawCardText(
+      doc,
+      `Fisico: ${formatInventory(card.realInventory)}   Sistema: ${formatInventory(card.systemInventory)}`,
+      x + padding,
+      y + 52,
+      width - padding * 2,
+      { size: 8.5, color: "#486581", lineBreak: false }
+    );
+    drawCardText(doc, limitText(card.comments, 72), x + padding, y + 66, width - padding * 2, {
+      size: 8,
+      color: "#334E68",
+      lineBreak: false,
+    });
+  } else {
+    drawCardText(doc, "Continuacion fotografica", x + padding, y + 58, width - padding * 2, {
+      font: "Helvetica-Bold",
+      size: 8,
+      color: "#5A7984",
+      lineBreak: false,
+    });
+  }
 
   if (prepared.imageBuffer) {
     doc.image(prepared.imageBuffer, x + padding, imageAreaY, {
@@ -320,9 +323,8 @@ async function drawPresentationPage(
   const usableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
   const usableHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
   const headerHeight = 42;
-  const footerHeight = 18;
   const contentTop = top + headerHeight + 14;
-  const contentHeight = usableHeight - headerHeight - footerHeight - 18;
+  const contentHeight = usableHeight - headerHeight - 14;
   const cards = flattenPresentationPage(page);
   const grid = resolvePageGrid(cards.length);
   const gap = 12;
@@ -357,15 +359,6 @@ async function drawPresentationPage(
       height: cardHeight,
     });
   }
-
-  drawCardText(
-    doc,
-    summarizePresentationPageEstablishments(page, 118),
-    left,
-    doc.page.height - doc.page.margins.bottom - 6,
-    usableWidth,
-    { size: 8, color: "#5A7984", align: "center", lineBreak: false }
-  );
 }
 
 export function buildPresentationPhotoCards(
@@ -373,7 +366,7 @@ export function buildPresentationPhotoCards(
   evidenceRowsByRecord: Map<number, EvidenceRow[]>,
   resolvedEvidenceUrls: Map<number, string>
 ): PresentationPhotoCard[] {
-  const cards: PresentationPhotoCard[] = [];
+  const rawCards: Omit<PresentationPhotoCard, "recordSequence" | "showRecordSummary">[] = [];
 
   for (const row of rows) {
     const evidences = evidenceRowsByRecord.get(row.recordId) ?? [];
@@ -381,7 +374,7 @@ export function buildPresentationPhotoCards(
       const photoUrl = resolvedEvidenceUrls.get(evidence.evidence_id);
       if (!photoUrl) continue;
 
-      cards.push({
+      rawCards.push({
         establishmentId: row.establishmentId,
         establishmentName: row.establishmentName,
         companyName: row.companyName,
@@ -396,7 +389,7 @@ export function buildPresentationPhotoCards(
     }
   }
 
-  return cards.sort((left, right) => {
+  const sortedCards = rawCards.sort((left, right) => {
     const establishmentSort = compareNullableText(left.establishmentName, right.establishmentName);
     if (establishmentSort !== 0) return establishmentSort;
 
@@ -410,6 +403,28 @@ export function buildPresentationPhotoCards(
     if (evidenceSort !== 0) return evidenceSort;
 
     return compareNullableNumber(left.establishmentId, right.establishmentId);
+  });
+
+  const recordSequenceById = new Map<number, number>();
+  const renderedSummaryByRecordId = new Set<number>();
+  let nextRecordSequence = 1;
+
+  return sortedCards.map((card) => {
+    let recordSequence = recordSequenceById.get(card.recordId);
+    if (recordSequence == null) {
+      recordSequence = nextRecordSequence;
+      nextRecordSequence += 1;
+      recordSequenceById.set(card.recordId, recordSequence);
+    }
+
+    const showRecordSummary = !renderedSummaryByRecordId.has(card.recordId);
+    renderedSummaryByRecordId.add(card.recordId);
+
+    return {
+      ...card,
+      recordSequence,
+      showRecordSummary,
+    };
   });
 }
 
