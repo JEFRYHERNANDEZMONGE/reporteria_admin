@@ -1,8 +1,11 @@
 import PDFDocument from "pdfkit";
+import { createClient } from "@supabase/supabase-js";
 import { logAuditAction } from "@/lib/audit/log";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
+import { buildPresentationPhotoCards, buildPresentationReportPdf } from "@/lib/reports/presentation-report";
 import { isReportType, reportsForRole, type ReportType } from "@/lib/reports/types";
 import {
+  fetchEvidenceRows,
   fetchReportRows,
   formatDateTime,
   parseReportFilters,
@@ -10,6 +13,8 @@ import {
   reportTitle,
   type FlatRow,
 } from "@/lib/reports/export-core";
+import { resolveEvidenceUrl } from "@/lib/reports/evidence-storage";
+import { getSupabaseEnv, getSupabaseServiceRoleKey } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -527,6 +532,8 @@ function buildBrandedPdf(reportType: ReportType, rows: FlatRow[] | null, auditDa
     case "eficiencia":
       buildEficiencia(doc, y, rows!);
       break;
+    case "presentacion":
+      break;
     case "ajustes":
       buildAjustes(doc, y, rows!);
       break;
@@ -645,7 +652,54 @@ export async function GET(request: Request) {
         filters,
       });
 
-      pdfBuffer = await buildBrandedPdf(reportType, rows);
+      if (reportType === "presentacion") {
+        const recordIds = rows.map((row) => row.recordId);
+        const evidenceRowsByRecord = await fetchEvidenceRows(supabase, recordIds);
+        const { url: supabaseUrl } = getSupabaseEnv();
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const signerClient = serviceRoleKey
+          ? createClient(supabaseUrl, getSupabaseServiceRoleKey(), {
+              auth: { persistSession: false, autoRefreshToken: false },
+            })
+          : supabase;
+
+        const resolvedEvidenceUrls = new Map<number, string>();
+        for (const evidences of evidenceRowsByRecord.values()) {
+          const resolvedEntries = await Promise.all(
+            evidences.map(async (item) => {
+              const resolvedUrl = await resolveEvidenceUrl(signerClient, item.url);
+              return resolvedUrl ? ([item.evidence_id, resolvedUrl] as const) : null;
+            })
+          );
+
+          for (const entry of resolvedEntries) {
+            if (!entry) continue;
+            resolvedEvidenceUrls.set(entry[0], entry[1]);
+          }
+        }
+
+        const cards = buildPresentationPhotoCards(rows, evidenceRowsByRecord, resolvedEvidenceUrls);
+        let companyName = rows.find((row) => row.companyName)?.companyName ?? null;
+
+        if (!companyName && filters.companyId) {
+          const companyRes = await supabase
+            .from("company")
+            .select("name")
+            .eq("company_id", filters.companyId)
+            .maybeSingle();
+          companyName = companyRes.data?.name ?? null;
+        }
+
+        pdfBuffer = await buildPresentationReportPdf(cards, {
+          title: reportTitle(reportType),
+          generatedAtIso: new Date().toISOString(),
+          companyName,
+          from: filters.from,
+          to: filters.to,
+        });
+      } else {
+        pdfBuffer = await buildBrandedPdf(reportType, rows);
+      }
     }
 
     await logAuditAction(supabase, {

@@ -35,7 +35,7 @@ function shouldShowRoute(reportType: ReportType) {
 }
 
 function shouldShowCompany(reportType: ReportType) {
-  return reportType === "completo" || reportType === "ajustes";
+  return reportType === "completo" || reportType === "ajustes" || reportType === "presentacion";
 }
 
 function shouldShowProduct(reportType: ReportType) {
@@ -43,7 +43,7 @@ function shouldShowProduct(reportType: ReportType) {
 }
 
 function shouldShowEstablishment(reportType: ReportType) {
-  return reportType === "completo" || reportType === "ajustes";
+  return reportType === "completo" || reportType === "ajustes" || reportType === "presentacion";
 }
 
 export function ExportReportButton({

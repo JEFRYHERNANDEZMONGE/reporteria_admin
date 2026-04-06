@@ -2,6 +2,7 @@ import type { AppRole } from "@/lib/auth/roles";
 
 export const REPORT_TYPES = [
   "completo",
+  "presentacion",
   "eficiencia",
   "ajustes",
   "auditoria",
@@ -23,6 +24,12 @@ export const REPORT_DEFINITIONS: Record<ReportType, ReportDefinition> = {
     title: "Reporte completo",
     summary: "Exporta el detalle de registros por fecha, empresa y producto.",
     info: "Incluye cada registro con inventario de sistema, inventario real, usuario, establecimiento y evidencias.",
+  },
+  presentacion: {
+    type: "presentacion",
+    title: "Reporte presentacion",
+    summary: "Genera un PDF horizontal tipo presentacion con evidencias grandes por establecimiento.",
+    info: "Agrupa establecimientos y evidencias visuales en paginas horizontales con un maximo de 6 fotos por pagina.",
   },
   eficiencia: {
     type: "eficiencia",
@@ -56,7 +63,7 @@ export function reportsForRole(role: AppRole): ReportType[] {
   }
 
   if (role === "visitante") {
-    return ["completo", "ajustes"];
+    return ["completo", "presentacion", "ajustes"];
   }
 
   return [];
