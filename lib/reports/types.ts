@@ -7,6 +7,7 @@ export const REPORT_TYPES = [
   "ajustes",
   "auditoria",
   "productividad",
+  "productividad_empresa",
 ] as const;
 
 export type ReportType = (typeof REPORT_TYPES)[number];
@@ -55,6 +56,12 @@ export const REPORT_DEFINITIONS: Record<ReportType, ReportDefinition> = {
     summary: "Consolida volumen de registros por usuario y promedio diario.",
     info: "Ayuda a comparar carga operativa entre usuarios en un rango de fechas.",
   },
+  productividad_empresa: {
+    type: "productividad_empresa",
+    title: "Productividad por empresa",
+    summary: "Resume actividad por empresa segun establecimientos visitados y avance de rutas.",
+    info: "Agrupa registros por empresa, muestra establecimientos visitados, rutas involucradas y completitud de ruta en el rango seleccionado.",
+  },
 };
 
 export function reportsForRole(role: AppRole): ReportType[] {
@@ -63,7 +70,7 @@ export function reportsForRole(role: AppRole): ReportType[] {
   }
 
   if (role === "visitante") {
-    return ["completo", "presentacion", "ajustes"];
+    return ["completo", "presentacion", "ajustes", "productividad_empresa"];
   }
 
   return [];

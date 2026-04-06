@@ -166,6 +166,7 @@ export function reportTitle(type: ReportType): string {
   if (type === "eficiencia") return "Eficiencia operativa";
   if (type === "ajustes") return "Ajustes de inventario";
   if (type === "auditoria") return "Auditoria de usuarios";
+  if (type === "productividad_empresa") return "Productividad por empresa";
   return "Productividad";
 }
 

@@ -216,14 +216,6 @@ function drawCover(doc: PDFKit.PDFDocument, cards: PresentationPhotoCard[], opti
     });
   });
 
-  drawCardText(
-    doc,
-    "Cada pagina interior mantiene un maximo de 6 fotos y puede combinar varios establecimientos cuando el volumen es bajo.",
-    left + 24,
-    top + usableHeight - 64,
-    usableWidth - 48,
-    { size: 11, color: "#5A7984" }
-  );
 }
 
 async function drawPresentationCard(params: {

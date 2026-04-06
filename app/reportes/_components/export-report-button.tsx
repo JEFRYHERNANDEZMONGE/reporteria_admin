@@ -31,11 +31,16 @@ function shouldShowUser(reportType: ReportType) {
 }
 
 function shouldShowRoute(reportType: ReportType) {
-  return reportType === "ajustes";
+  return reportType === "ajustes" || reportType === "productividad_empresa";
 }
 
 function shouldShowCompany(reportType: ReportType) {
-  return reportType === "completo" || reportType === "ajustes" || reportType === "presentacion";
+  return (
+    reportType === "completo" ||
+    reportType === "ajustes" ||
+    reportType === "presentacion" ||
+    reportType === "productividad_empresa"
+  );
 }
 
 function shouldShowProduct(reportType: ReportType) {
@@ -43,7 +48,12 @@ function shouldShowProduct(reportType: ReportType) {
 }
 
 function shouldShowEstablishment(reportType: ReportType) {
-  return reportType === "completo" || reportType === "ajustes" || reportType === "presentacion";
+  return (
+    reportType === "completo" ||
+    reportType === "ajustes" ||
+    reportType === "presentacion" ||
+    reportType === "productividad_empresa"
+  );
 }
 
 export function ExportReportButton({

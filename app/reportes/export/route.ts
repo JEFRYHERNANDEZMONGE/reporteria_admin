@@ -3,6 +3,16 @@ import { createClient } from "@supabase/supabase-js";
 import { logAuditAction } from "@/lib/audit/log";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { buildPresentationPhotoCards, buildPresentationReportPdf } from "@/lib/reports/presentation-report";
+import {
+  buildCompanyProductividadSummary,
+  formatCompanyProductividadCompletion,
+  type CompanyProductividadScopeEstablishment,
+} from "@/lib/reports/productividad-company-report";
+import {
+  buildProductividadSummary,
+  formatProductividadCompletion,
+  type ProductividadAssignmentData,
+} from "@/lib/reports/productividad-report";
 import { isReportType, reportsForRole, type ReportType } from "@/lib/reports/types";
 import {
   fetchEvidenceRows,
@@ -463,53 +473,202 @@ function buildAuditoria(doc: PDFKit.PDFDocument, startY: number, data: AuditData
 }
 
 /* ── Build: Productividad ────────────────────────────────── */
-function buildProductividad(doc: PDFKit.PDFDocument, startY: number, rows: FlatRow[]) {
-  type Prod = { total: number; days: Set<string> };
-  const byUser = new Map<string, Prod>();
-
-  rows.forEach((row) => {
-    const key = row.userName ?? "Sin usuario";
-    const day = row.timeDate.slice(0, 10);
-    const current = byUser.get(key) ?? { total: 0, days: new Set<string>() };
-    current.total += 1;
-    current.days.add(day);
-    byUser.set(key, current);
-  });
-
-  const totalDays = new Set(rows.map((r) => r.timeDate.slice(0, 10))).size;
-  const avgPerDay = totalDays > 0 ? (rows.length / totalDays).toFixed(1) : "0";
+function buildProductividad(
+  doc: PDFKit.PDFDocument,
+  startY: number,
+  rows: FlatRow[],
+  assignments: ProductividadAssignmentData
+) {
+  const summary = buildProductividadSummary(rows, assignments);
 
   let y = drawStatBoxes(doc, startY, [
-    { label: "Total registros", value: String(rows.length) },
-    { label: "Usuarios", value: String(byUser.size) },
-    { label: "Dias con actividad", value: String(totalDays) },
-    { label: "Promedio diario", value: avgPerDay },
+    { label: "Total registros", value: String(summary.totalRecords) },
+    { label: "Usuarios", value: String(summary.totalUsers) },
+    { label: "Establecimientos visitados", value: String(summary.totalVisitedEstablishments) },
+    {
+      label: "Completitud global",
+      value: summary.overallCompletionRate == null ? "N/D" : `${summary.overallCompletionRate.toFixed(1)}%`,
+    },
   ]);
 
   y = drawSectionTitle(doc, y, "Productividad por usuario");
 
-  const sorted = [...byUser.entries()].sort((a, b) => b[1].total - a[1].total);
   const usable = doc.page.width - doc.page.margins.left - doc.page.margins.right;
   drawTable(
     doc,
     y,
     [
-      { header: "Usuario", width: usable * 0.30 },
-      { header: "Registros", width: usable * 0.18, align: "center" },
-      { header: "Dias activos", width: usable * 0.22, align: "center" },
-      { header: "Promedio diario", width: usable * 0.30, align: "center" },
+      { header: "Usuario", width: usable * 0.22 },
+      { header: "Registros", width: usable * 0.12, align: "center" },
+      { header: "Dias activos", width: usable * 0.14, align: "center" },
+      { header: "Promedio diario", width: usable * 0.16, align: "center" },
+      { header: "Establecimientos visitados", width: usable * 0.16, align: "center" },
+      { header: "Completitud", width: usable * 0.20, align: "center" },
     ],
-    sorted.map(([userName, info]) => {
-      const avg = info.days.size > 0 ? (info.total / info.days.size).toFixed(2) : "0.00";
-      return [userName, String(info.total), String(info.days.size), avg];
-    })
+    summary.users.map((item) => [
+      item.userName,
+      String(item.totalRecords),
+      String(item.activeDays),
+      item.averagePerDay.toFixed(2),
+      String(item.visitedEstablishments),
+      formatProductividadCompletion(item),
+    ])
   );
 }
 
+function buildProductividadEmpresa(
+  doc: PDFKit.PDFDocument,
+  startY: number,
+  rows: FlatRow[],
+  scopedEstablishments: CompanyProductividadScopeEstablishment[]
+) {
+  const summary = buildCompanyProductividadSummary(rows, scopedEstablishments);
+
+  let y = drawStatBoxes(doc, startY, [
+    { label: "Total registros", value: String(summary.totalRecords) },
+    { label: "Empresas", value: String(summary.totalCompanies) },
+    { label: "Establecimientos visitados", value: String(summary.totalVisitedEstablishments) },
+    {
+      label: "Completitud global",
+      value: summary.overallCompletionRate == null ? "N/D" : `${summary.overallCompletionRate.toFixed(1)}%`,
+    },
+  ]);
+
+  y = drawSectionTitle(doc, y, "Productividad por empresa");
+
+  const usable = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  drawTable(
+    doc,
+    y,
+    [
+      { header: "Empresa", width: usable * 0.22 },
+      { header: "Registros", width: usable * 0.11, align: "center" },
+      { header: "Dias activos", width: usable * 0.11, align: "center" },
+      { header: "Promedio diario", width: usable * 0.14, align: "center" },
+      { header: "Establecimientos visitados", width: usable * 0.14, align: "center" },
+      { header: "Rutas involucradas", width: usable * 0.10, align: "center" },
+      { header: "Completitud de ruta", width: usable * 0.18, align: "center" },
+    ],
+    summary.companies.map((item) => [
+      item.companyName,
+      String(item.totalRecords),
+      String(item.activeDays),
+      item.averagePerDay.toFixed(2),
+      String(item.visitedEstablishments),
+      String(item.routeCount),
+      formatCompanyProductividadCompletion(item),
+    ])
+  );
+}
+
+async function fetchRouteScopedEstablishments(params: {
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  routeIds: number[];
+  establishmentId: number | null;
+}): Promise<Array<{ routeId: number; establishmentId: number }>> {
+  const { supabase, routeIds, establishmentId } = params;
+  if (routeIds.length === 0) return [];
+
+  let establishmentsQuery = supabase
+    .from("establishment")
+    .select("establishment_id, route_id")
+    .in("route_id", routeIds);
+
+  if (establishmentId) {
+    establishmentsQuery = establishmentsQuery.eq("establishment_id", establishmentId);
+  }
+
+  const { data: establishmentsData, error: establishmentsError } = await establishmentsQuery;
+  if (establishmentsError) {
+    throw new Error(`No se pudieron cargar los establecimientos de las rutas: ${establishmentsError.message}`);
+  }
+
+  return (establishmentsData ?? [])
+    .filter(
+      (row): row is { establishment_id: number; route_id: number } =>
+        typeof row.establishment_id === "number" && typeof row.route_id === "number"
+    )
+    .map((row) => ({
+      routeId: row.route_id,
+      establishmentId: row.establishment_id,
+    }));
+}
+
+async function fetchProductividadAssignments(params: {
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  userIds: number[];
+  routeId: number | null;
+  establishmentId: number | null;
+}): Promise<ProductividadAssignmentData> {
+  const { supabase, userIds, routeId, establishmentId } = params;
+  if (userIds.length === 0) {
+    return { routes: [], establishments: [] };
+  }
+
+  let routesQuery = supabase
+    .from("route")
+    .select("route_id, assigned_user")
+    .eq("is_active", true)
+    .in("assigned_user", userIds);
+
+  if (routeId) {
+    routesQuery = routesQuery.eq("route_id", routeId);
+  }
+
+  const { data: routesData, error: routesError } = await routesQuery;
+  if (routesError) {
+    throw new Error(`No se pudieron cargar las rutas asignadas: ${routesError.message}`);
+  }
+
+  const routes = (routesData ?? [])
+    .filter(
+      (row): row is { route_id: number; assigned_user: number } =>
+        typeof row.route_id === "number" && typeof row.assigned_user === "number"
+    )
+    .map((row) => ({
+      routeId: row.route_id,
+      assignedUserId: row.assigned_user,
+    }));
+
+  const routeIds = routes.map((row) => row.routeId);
+  if (routeIds.length === 0) {
+    return { routes, establishments: [] };
+  }
+  const establishments = await fetchRouteScopedEstablishments({
+    supabase,
+    routeIds,
+    establishmentId,
+  });
+
+  return { routes, establishments };
+}
+
 /* ── Main PDF builder per report type ────────────────────── */
-function buildBrandedPdf(reportType: ReportType, rows: FlatRow[]): Promise<Buffer>;
+function buildBrandedPdf(
+  reportType: Exclude<ReportType, "auditoria" | "productividad" | "productividad_empresa">,
+  rows: FlatRow[]
+): Promise<Buffer>;
 function buildBrandedPdf(reportType: "auditoria", rows: null, auditData: AuditData): Promise<Buffer>;
-function buildBrandedPdf(reportType: ReportType, rows: FlatRow[] | null, auditData?: AuditData): Promise<Buffer> {
+function buildBrandedPdf(
+  reportType: "productividad",
+  rows: FlatRow[],
+  auditData: undefined,
+  productividadAssignments: ProductividadAssignmentData
+): Promise<Buffer>;
+function buildBrandedPdf(
+  reportType: "productividad_empresa",
+  rows: FlatRow[],
+  auditData: undefined,
+  productividadAssignments: undefined,
+  companyScopedEstablishments: CompanyProductividadScopeEstablishment[]
+): Promise<Buffer>;
+function buildBrandedPdf(
+  reportType: ReportType,
+  rows: FlatRow[] | null,
+  auditData?: AuditData,
+  productividadAssignments?: ProductividadAssignmentData,
+  companyScopedEstablishments?: CompanyProductividadScopeEstablishment[]
+): Promise<Buffer> {
   const doc = new PDFDocument({
     size: "A4",
     margins: { top: 34, right: 28, bottom: 40, left: 28 },
@@ -541,7 +700,10 @@ function buildBrandedPdf(reportType: ReportType, rows: FlatRow[] | null, auditDa
       buildAuditoria(doc, y, auditData!);
       break;
     case "productividad":
-      buildProductividad(doc, y, rows!);
+      buildProductividad(doc, y, rows!, productividadAssignments ?? { routes: [], establishments: [] });
+      break;
+    case "productividad_empresa":
+      buildProductividadEmpresa(doc, y, rows!, companyScopedEstablishments ?? []);
       break;
     default:
       break;
@@ -697,6 +859,37 @@ export async function GET(request: Request) {
           from: filters.from,
           to: filters.to,
         });
+      } else if (reportType === "productividad") {
+        const userIds = Array.from(
+          new Set(
+            rows
+              .map((row) => row.userId)
+              .filter((userId): userId is number => typeof userId === "number")
+          )
+        );
+        const assignments = await fetchProductividadAssignments({
+          supabase,
+          userIds,
+          routeId: filters.routeId,
+          establishmentId: filters.establishmentId,
+        });
+
+        pdfBuffer = await buildBrandedPdf(reportType, rows, undefined, assignments);
+      } else if (reportType === "productividad_empresa") {
+        const routeIds = Array.from(
+          new Set(
+            rows
+              .map((row) => row.routeId)
+              .filter((routeId): routeId is number => typeof routeId === "number")
+          )
+        );
+        const scopedEstablishments = await fetchRouteScopedEstablishments({
+          supabase,
+          routeIds,
+          establishmentId: filters.establishmentId,
+        });
+
+        pdfBuffer = await buildBrandedPdf(reportType, rows, undefined, undefined, scopedEstablishments);
       } else {
         pdfBuffer = await buildBrandedPdf(reportType, rows);
       }
