@@ -11,10 +11,12 @@ export type RouteSummaryEstablishment = {
   name: string;
   direction: string | null;
   is_active: boolean;
+  assignedProductIds?: number[];
 };
 
 export type RouteSummaryRecord = {
   establishment_id: number | null;
+  product_id?: number | null;
   time_date: string;
 };
 
@@ -237,14 +239,16 @@ function getStatus(params: {
     return {
       key: "completada" as const,
       label: "Completada",
-      description: "Todos los establecimientos tienen al menos un registro en el lapso activo.",
+      description:
+        "Todos los establecimientos completaron sus registros o ya no tienen productos pendientes en el lapso activo.",
     };
   }
 
   return {
     key: "en_progreso" as const,
     label: "En progreso",
-    description: "La ruta ya tiene actividad, pero todavia faltan establecimientos por completar.",
+    description:
+      "La ruta ya tiene actividad, pero todavia faltan productos o establecimientos por completar.",
   };
 }
 
@@ -257,6 +261,7 @@ export function buildRouteRealtimeSummary(params: {
   const { route, establishments, records, now } = params;
   const period = getActiveRoutePeriod(route, now);
   const latestRecordByEstablishmentId = new Map<number, string>();
+  const recordedProductIdsByEstablishmentId = new Map<number, Set<number>>();
 
   for (const record of records) {
     if (!period.active || !record.establishment_id) continue;
@@ -264,6 +269,13 @@ export function buildRouteRealtimeSummary(params: {
     const current = latestRecordByEstablishmentId.get(record.establishment_id);
     if (!current || new Date(record.time_date).getTime() > new Date(current).getTime()) {
       latestRecordByEstablishmentId.set(record.establishment_id, record.time_date);
+    }
+
+    if (typeof record.product_id === "number" && Number.isInteger(record.product_id) && record.product_id > 0) {
+      const currentProducts =
+        recordedProductIdsByEstablishmentId.get(record.establishment_id) ?? new Set<number>();
+      currentProducts.add(record.product_id);
+      recordedProductIdsByEstablishmentId.set(record.establishment_id, currentProducts);
     }
   }
 
@@ -274,6 +286,24 @@ export function buildRouteRealtimeSummary(params: {
     const lastRecordAt = period.active
       ? latestRecordByEstablishmentId.get(establishment.establishment_id) ?? null
       : null;
+    const hasAssignedProductsContext = Array.isArray(establishment.assignedProductIds);
+    const assignedProductSource = establishment.assignedProductIds ?? [];
+    const assignedProductIds = hasAssignedProductsContext
+      ? Array.from(
+          new Set(
+            assignedProductSource.filter(
+              (productId): productId is number => Number.isInteger(productId) && productId > 0
+            )
+          )
+        )
+      : [];
+    const recordedProductIds =
+      recordedProductIdsByEstablishmentId.get(establishment.establishment_id) ?? new Set<number>();
+    const isCompleted = period.active
+      ? hasAssignedProductsContext
+        ? assignedProductIds.every((productId) => recordedProductIds.has(productId))
+        : Boolean(lastRecordAt)
+      : false;
     const item: RouteSummaryItem = {
       establishmentId: establishment.establishment_id,
       name: establishment.name,
@@ -282,7 +312,7 @@ export function buildRouteRealtimeSummary(params: {
       lastRecordAt,
     };
 
-    if (lastRecordAt) {
+    if (isCompleted) {
       completed.push(item);
     } else {
       pending.push(item);

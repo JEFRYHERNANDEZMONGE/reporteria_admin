@@ -792,9 +792,49 @@ async function buildRouteSummaryForSelection(params: {
   productIds?: number[];
 }) {
   const { supabase, route, establishments, productIds } = params;
+  let establishmentsWithAssignments = establishments;
+
+  if (establishments.length > 0) {
+    let relationsQuery = supabase
+      .from("products_establishment")
+      .select("establishment_id, product_id")
+      .in(
+        "establishment_id",
+        establishments.map((item) => item.establishment_id)
+      );
+
+    if (productIds && productIds.length > 0) {
+      relationsQuery = relationsQuery.in("product_id", productIds);
+    }
+
+    const { data: relationsData } = await relationsQuery;
+    const assignedProductIdsByEstablishment = new Map<number, number[]>();
+
+    for (const relation of relationsData ?? []) {
+      if (
+        !Number.isInteger(relation.establishment_id) ||
+        relation.establishment_id <= 0 ||
+        !Number.isInteger(relation.product_id) ||
+        relation.product_id <= 0
+      ) {
+        continue;
+      }
+
+      const current = assignedProductIdsByEstablishment.get(relation.establishment_id) ?? [];
+      current.push(relation.product_id);
+      assignedProductIdsByEstablishment.set(relation.establishment_id, current);
+    }
+
+    establishmentsWithAssignments = establishments.map((establishment) => ({
+      ...establishment,
+      assignedProductIds:
+        assignedProductIdsByEstablishment.get(establishment.establishment_id) ?? [],
+    }));
+  }
+
   const baseSummary = buildRouteRealtimeSummary({
     route,
-    establishments,
+    establishments: establishmentsWithAssignments,
     records: [],
   });
 
@@ -807,10 +847,10 @@ async function buildRouteSummaryForSelection(params: {
   ) {
     let recordsQuery = supabase
       .from("check_record")
-      .select("establishment_id, time_date")
+      .select("establishment_id, product_id, time_date")
       .in(
         "establishment_id",
-        establishments.map((item) => item.establishment_id)
+        establishmentsWithAssignments.map((item) => item.establishment_id)
       )
       .gte("time_date", baseSummary.period.startAt)
       .lt("time_date", baseSummary.period.endAt)
@@ -826,7 +866,7 @@ async function buildRouteSummaryForSelection(params: {
 
   return buildRouteRealtimeSummary({
     route,
-    establishments,
+    establishments: establishmentsWithAssignments,
     records,
   });
 }
